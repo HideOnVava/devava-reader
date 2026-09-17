@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ListView?>
+<?import javafx.scene.control.MenuButton?>
+<?import javafx.scene.control.MenuItem?>
+<?import javafx.scene.control.Tooltip?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+
+<!-- Collection screen: its volumes in custom order -->
+<BorderPane xmlns:fx="http://javafx.com/fxml" fx:controller="com.devavaxp.reader.VolumesController"
+            styleClass="screen">
+
+    <top>
+        <HBox styleClass="header" alignment="CENTER_LEFT" spacing="10">
+            <padding>
+                <Insets top="22" right="32" bottom="10" left="20"/>
+            </padding>
+            <Button text="←" styleClass="icon, flat" onAction="#onBack" focusTraversable="false">
+                <tooltip>
+                    <Tooltip text="Back to the library (Esc)"/>
+                </tooltip>
+            </Button>
+            <VBox spacing="2" HBox.hgrow="ALWAYS">
+                <Label fx:id="collectionTitle" text="Collection" styleClass="title"/>
+                <Label fx:id="summaryLabel" styleClass="subtitle"/>
+            </VBox>
+            <MenuButton text="⋮" styleClass="icon, flat, more-menu" focusTraversable="false">
+                <items>
+                    <MenuItem text="Rename collection" onAction="#onRenameCollection"/>
+                    <MenuItem text="Delete collection…" onAction="#onDeleteCollection"/>
+                </items>
+            </MenuButton>
+            <Button text="＋  Add EPUB" styleClass="primary" onAction="#onAddEpub">
+                <tooltip>
+                    <Tooltip text="You can also drag .epub files onto the list"/>
+                </tooltip>
+            </Button>
+        </HBox>
+    </top>
+
+    <center>
+        <StackPane>
+            <padding>
+                <Insets top="4" right="32" bottom="4" left="32"/>
+            </padding>
+            <ListView fx:id="bookList" styleClass="list"/>
+        </StackPane>
+    </center>
+
+    <bottom>
+        <HBox spacing="8" alignment="CENTER_LEFT" styleClass="bottom-bar">
+            <padding>
+                <Insets top="12" right="32" bottom="22" left="32"/>
+            </padding>
+            <Button fx:id="moveUpButton" text="↑" styleClass="icon" onAction="#onMoveUp" focusTraversable="false">
+                <tooltip>
+                    <Tooltip text="Move up (Ctrl+↑)"/>
+                </tooltip>
+            </Button>
+            <Button fx:id="moveDownButton" text="↓" styleClass="icon" onAction="#onMoveDown" focusTraversable="false">
+                <tooltip>
+                    <Tooltip text="Move down (Ctrl+↓)"/>
+                </tooltip>
+            </Button>
+            <Region prefWidth="6"/>
+            <Button fx:id="renameButton" text="Rename" onAction="#onRename" focusTraversable="false">
+                <tooltip>
+                    <Tooltip text="Change the volume title (F2)"/>
+                </tooltip>
+            </Button>
+            <Button fx:id="readButton" text="Mark as read" onAction="#onToggleRead" focusTraversable="false"/>
+            <Button fx:id="removeButton" text="Remove" onAction="#onRemove" focusTraversable="false">
+                <tooltip>
+                    <Tooltip text="Remove from the collection (Del). The .epub file is not deleted"/>
+                </tooltip>
+            </Button>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Button fx:id="openReaderButton" text="Read  →" styleClass="primary" onAction="#onOpenReader">
+                <tooltip>
+                    <Tooltip text="Open the reader (Enter or double-click)"/>
+                </tooltip>
+            </Button>
+        </HBox>
+    </bottom>
+</BorderPane>

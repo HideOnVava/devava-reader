@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ListView?>
+<?import javafx.scene.control.ProgressBar?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.Tooltip?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
+
+<!-- Main screen: the list of collections -->
+<BorderPane xmlns:fx="http://javafx.com/fxml" fx:controller="com.devavaxp.reader.CollectionsController"
+            styleClass="screen">
+
+    <top>
+        <HBox styleClass="header" alignment="CENTER_LEFT" spacing="12">
+            <padding>
+                <Insets top="28" right="32" bottom="12" left="32"/>
+            </padding>
+            <VBox spacing="2" HBox.hgrow="ALWAYS">
+                <Label text="Library" styleClass="title"/>
+                <Label fx:id="summaryLabel" text="Your collections" styleClass="subtitle"/>
+            </VBox>
+        </HBox>
+    </top>
+
+    <center>
+        <VBox spacing="12">
+            <padding>
+                <Insets top="4" right="32" bottom="4" left="32"/>
+            </padding>
+
+            <!-- "Continue reading" card: only shown when a book is in progress -->
+            <HBox fx:id="continueCard" styleClass="continue-card" alignment="CENTER_LEFT" spacing="16"
+                  managed="false" visible="false" onMouseClicked="#onContinueReading">
+                <VBox spacing="6" HBox.hgrow="ALWAYS">
+                    <Label text="CONTINUE READING" styleClass="section-label"/>
+                    <Label fx:id="continueTitleLabel" styleClass="text-strong"/>
+                    <HBox spacing="10" alignment="CENTER_LEFT">
+                        <ProgressBar fx:id="continueBar" progress="0" prefHeight="6" HBox.hgrow="ALWAYS"
+                                     maxWidth="Infinity" styleClass="thin-bar"/>
+                        <Label fx:id="continueProgressLabel" styleClass="text-muted"/>
+                    </HBox>
+                </VBox>
+                <Button text="Read" styleClass="primary" onAction="#onContinueReading" focusTraversable="false"/>
+            </HBox>
+
+            <ListView fx:id="collectionList" VBox.vgrow="ALWAYS" styleClass="list"/>
+        </VBox>
+    </center>
+
+    <bottom>
+        <HBox spacing="10" alignment="CENTER_LEFT" styleClass="bottom-bar">
+            <padding>
+                <Insets top="12" right="32" bottom="22" left="32"/>
+            </padding>
+            <TextField fx:id="newCollectionField" promptText="New collection name…" HBox.hgrow="ALWAYS"
+                       onAction="#onCreateCollection"/>
+            <Button text="Create collection" styleClass="primary" onAction="#onCreateCollection"/>
+            <Region prefWidth="8"/>
+            <Button fx:id="openButton" text="Open  →" onAction="#onOpenCollection" disable="true">
+                <tooltip>
+                    <Tooltip text="Open the selected collection (Enter)"/>
+                </tooltip>
+            </Button>
+        </HBox>
+    </bottom>
+</BorderPane>

@@ -1,0 +1,632 @@
+/* =====================================================================
+   Devava Reader — stylesheet (minimal, modern)
+   ===================================================================== */
+
+.root {
+    -fx-font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    -fx-font-size: 13px;
+    -fx-background-color: -bg;
+
+    /* Base palette */
+    -bg: #F5F5F7;
+    -surface: #FFFFFF;
+    -surface-hover: #F0F0F3;
+    -border: #E4E4E9;
+    -text: #1C1C21;
+    -text-muted: #6E6E78;
+    -text-faint: #9A9AA5;
+    -accent: #4F46E5;
+    -accent-hover: #4338CA;
+    -accent-soft: #EEF0FF;
+    -success: #15803D;
+    -success-soft: #DCFCE7;
+    -danger: #DC2626;
+    -danger-soft: #FEE2E2;
+
+    /* No default blue focus halo */
+    -fx-focus-color: transparent;
+    -fx-faint-focus-color: transparent;
+}
+
+.screen {
+    -fx-background-color: -bg;
+}
+
+/* ---------- Text ---------- */
+
+.title {
+    -fx-font-size: 24px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -text;
+}
+
+.subtitle {
+    -fx-font-size: 13px;
+    -fx-text-fill: -text-muted;
+}
+
+.text-strong {
+    -fx-font-size: 15px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -text;
+}
+
+.text-muted {
+    -fx-text-fill: -text-muted;
+}
+
+.section-label {
+    -fx-font-size: 10.5px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -accent;
+}
+
+.label {
+    -fx-text-fill: -text;
+}
+
+/* ---------- Buttons ---------- */
+
+.button, .menu-button {
+    -fx-background-color: -surface;
+    -fx-background-radius: 8;
+    -fx-border-color: -border;
+    -fx-border-radius: 8;
+    -fx-border-width: 1;
+    -fx-text-fill: -text;
+    -fx-padding: 7 14;
+    -fx-cursor: hand;
+    -fx-font-size: 13px;
+}
+
+.button:hover, .menu-button:hover {
+    -fx-background-color: -surface-hover;
+}
+
+.button:pressed, .menu-button:pressed, .menu-button:showing {
+    -fx-background-color: -border;
+}
+
+.button:focused {
+    -fx-border-color: -accent;
+}
+
+.button:disabled, .menu-button:disabled {
+    -fx-opacity: 0.45;
+    -fx-cursor: default;
+}
+
+.button.primary {
+    -fx-background-color: -accent;
+    -fx-border-color: transparent;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+}
+
+.button.primary:hover {
+    -fx-background-color: -accent-hover;
+}
+
+.button.primary:pressed {
+    -fx-background-color: #3730A3;
+}
+
+.button.primary:focused {
+    -fx-border-color: #A5B4FC;
+}
+
+.button.danger {
+    -fx-background-color: -danger;
+    -fx-border-color: transparent;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+}
+
+.button.danger:hover {
+    -fx-background-color: #B91C1C;
+}
+
+.button.icon, .menu-button.icon {
+    -fx-padding: 5 10;
+    -fx-min-width: 34;
+    -fx-font-size: 15px;
+}
+
+.button.flat, .menu-button.flat {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+
+.button.flat:hover, .menu-button.flat:hover {
+    -fx-background-color: -surface-hover;
+}
+
+.button.flat:pressed, .menu-button.flat:showing {
+    -fx-background-color: -border;
+}
+
+.menu-button > .arrow-button {
+    -fx-padding: 0;
+}
+
+.menu-button > .arrow-button > .arrow {
+    -fx-padding: 0;
+    -fx-shape: null;
+    -fx-background-color: transparent;
+}
+
+.menu-button.more-menu {
+    -fx-font-size: 18px;
+    -fx-padding: 3 10 5 10;
+}
+
+/* ---------- Text fields ---------- */
+
+.text-field {
+    -fx-background-color: -surface;
+    -fx-background-radius: 8;
+    -fx-border-color: -border;
+    -fx-border-radius: 8;
+    -fx-border-width: 1;
+    -fx-padding: 7 12;
+    -fx-text-fill: -text;
+    -fx-prompt-text-fill: -text-faint;
+    -fx-highlight-fill: -accent-soft;
+    -fx-highlight-text-fill: -text;
+}
+
+.text-field:focused {
+    -fx-border-color: -accent;
+}
+
+/* ---------- Lists ---------- */
+
+.list {
+    -fx-background-color: -surface;
+    -fx-background-radius: 12;
+    -fx-border-color: -border;
+    -fx-border-radius: 12;
+    -fx-padding: 6;
+}
+
+.list .list-cell {
+    -fx-background-color: transparent;
+    -fx-background-radius: 8;
+    -fx-padding: 10 12;
+    -fx-text-fill: -text;
+    -fx-border-color: transparent;
+}
+
+.list .list-cell:filled:hover {
+    -fx-background-color: -surface-hover;
+}
+
+.list .list-cell:filled:selected,
+.list:focused .list-cell:filled:selected {
+    -fx-background-color: -accent-soft;
+}
+
+.list .list-cell:filled:selected .label {
+    -fx-text-fill: -text;
+}
+
+.list .placeholder .label {
+    -fx-text-fill: -text-faint;
+    -fx-font-size: 14px;
+}
+
+.row-title {
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -text;
+}
+
+.row-detail {
+    -fx-font-size: 12px;
+    -fx-text-fill: -text-muted;
+}
+
+.row-order {
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -text-faint;
+    -fx-min-width: 26;
+    -fx-alignment: center;
+}
+
+/* Collection avatar: colored square with the initial letter */
+
+.avatar {
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-text-fill: white;
+    -fx-background-color: -accent;
+    -fx-background-radius: 9;
+    -fx-min-width: 34;
+    -fx-min-height: 34;
+    -fx-max-width: 34;
+    -fx-max-height: 34;
+    -fx-alignment: center;
+}
+
+/* Status "pills" */
+
+.pill {
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+    -fx-padding: 3 9;
+    -fx-background-radius: 99;
+    -fx-background-color: -surface-hover;
+    -fx-text-fill: -text-muted;
+}
+
+.pill.read {
+    -fx-background-color: -success-soft;
+    -fx-text-fill: -success;
+}
+
+.pill.progress {
+    -fx-background-color: -accent-soft;
+    -fx-text-fill: -accent;
+}
+
+.pill.missing {
+    -fx-background-color: -danger-soft;
+    -fx-text-fill: -danger;
+}
+
+.list .list-cell:filled:selected .pill.read,
+.list .list-cell:filled:selected .pill.progress {
+    -fx-background-color: white;
+}
+
+.list .list-cell:filled:selected .pill.read .label {
+    -fx-text-fill: -success;
+}
+
+/* ---------- Progress bars ---------- */
+
+.progress-bar {
+    -fx-padding: 0;
+}
+
+.progress-bar > .track {
+    -fx-background-color: -border;
+    -fx-background-radius: 99;
+    -fx-background-insets: 0;
+}
+
+.progress-bar > .bar {
+    -fx-background-color: -accent;
+    -fx-background-radius: 99;
+    -fx-background-insets: 0;
+    -fx-padding: 2;
+}
+
+.thin-bar > .bar {
+    -fx-padding: 3;
+}
+
+.thin-bar.complete > .bar {
+    -fx-background-color: -success;
+}
+
+/* ---------- "Continue reading" card ---------- */
+
+.continue-card {
+    -fx-background-color: -surface;
+    -fx-background-radius: 12;
+    -fx-border-color: -border;
+    -fx-border-radius: 12;
+    -fx-padding: 14 16;
+    -fx-cursor: hand;
+}
+
+.continue-card:hover {
+    -fx-border-color: -accent;
+}
+
+/* ---------- Menus and tooltips ---------- */
+
+.context-menu {
+    -fx-background-color: -surface;
+    -fx-background-radius: 10;
+    -fx-border-color: -border;
+    -fx-border-radius: 10;
+    -fx-padding: 6;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.12), 16, 0, 0, 4);
+}
+
+.menu-item {
+    -fx-background-radius: 6;
+    -fx-padding: 7 14;
+}
+
+.menu-item .label {
+    -fx-text-fill: -text;
+}
+
+.menu-item:focused, .menu-item:hover {
+    -fx-background-color: -accent-soft;
+}
+
+.menu-item.danger .label {
+    -fx-text-fill: -danger;
+}
+
+.separator .line {
+    -fx-border-color: -border transparent transparent transparent;
+}
+
+.tooltip {
+    -fx-background-color: #2A2A32;
+    -fx-text-fill: white;
+    -fx-background-radius: 6;
+    -fx-padding: 6 10;
+    -fx-font-size: 12px;
+}
+
+/* ---------- Scroll bars ---------- */
+
+.scroll-bar {
+    -fx-background-color: transparent;
+    -fx-pref-width: 10;
+    -fx-pref-height: 10;
+}
+
+.scroll-bar .thumb {
+    -fx-background-color: #C9C9D2;
+    -fx-background-radius: 99;
+    -fx-background-insets: 2;
+}
+
+.scroll-bar .thumb:hover {
+    -fx-background-color: #ADADB8;
+}
+
+.scroll-bar .increment-button, .scroll-bar .decrement-button {
+    -fx-padding: 0;
+    -fx-background-color: transparent;
+}
+
+.scroll-bar .increment-arrow, .scroll-bar .decrement-arrow {
+    -fx-shape: null;
+    -fx-padding: 0;
+}
+
+.scroll-bar .track {
+    -fx-background-color: transparent;
+}
+
+/* ---------- Dialogs ---------- */
+
+.dialog {
+    -fx-background-color: -surface;
+}
+
+.dialog .header-panel {
+    -fx-background-color: -surface;
+}
+
+.dialog .header-panel .label {
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -text;
+}
+
+.dialog .content.label {
+    -fx-text-fill: -text-muted;
+    -fx-font-size: 13px;
+}
+
+.dialog .button-bar .container {
+    -fx-background-color: -surface;
+}
+
+.dialog .button-bar .button {
+    -fx-min-width: 90;
+}
+
+/* =====================================================================
+   Reader
+   ===================================================================== */
+
+.theme-light {
+    -reader-bg: #FAFAF9;
+    -reader-text: #1C1917;
+    -reader-muted: #78716C;
+    -reader-border: #E7E5E4;
+    -reader-bar: #FFFFFF;
+    -reader-hover: #F0EFEC;
+    -reader-selection: #EEF0FF;
+    -reader-accent: #4F46E5;
+}
+
+.theme-sepia {
+    -reader-bg: #F4ECD8;
+    -reader-text: #4A3B2A;
+    -reader-muted: #8A7A66;
+    -reader-border: #E4D9BE;
+    -reader-bar: #F8F2E2;
+    -reader-hover: #EEE4CC;
+    -reader-selection: #E6DBC0;
+    -reader-accent: #8B5A2B;
+}
+
+.theme-dark {
+    -reader-bg: #121212;
+    -reader-text: #D6D3D1;
+    -reader-muted: #8A8782;
+    -reader-border: #2A2A2A;
+    -reader-bar: #1A1A1A;
+    -reader-hover: #262626;
+    -reader-selection: #2E2A4A;
+    -reader-accent: #A5B4FC;
+}
+
+.reader-root {
+    -fx-background-color: -reader-bg;
+}
+
+.reader-viewer {
+    -fx-background-color: -reader-bg;
+}
+
+.reader-bar {
+    -fx-background-color: -reader-bar;
+    -fx-border-color: transparent transparent -reader-border transparent;
+    -fx-border-width: 1;
+}
+
+.reader-bar .button {
+    -fx-text-fill: -reader-text;
+}
+
+.reader-bar .button.flat:hover {
+    -fx-background-color: -reader-hover;
+}
+
+.reader-bar .button.flat:pressed {
+    -fx-background-color: -reader-border;
+}
+
+.reader-title {
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -reader-text;
+}
+
+.reader-subtitle {
+    -fx-font-size: 11.5px;
+    -fx-text-fill: -reader-muted;
+}
+
+.reader-footer {
+    -fx-background-color: -reader-bar;
+    -fx-border-color: -reader-border transparent transparent transparent;
+    -fx-border-width: 1;
+}
+
+.reader-footer-text {
+    -fx-font-size: 11.5px;
+    -fx-text-fill: -reader-muted;
+}
+
+.book-progress-bar > .track {
+    -fx-background-color: -reader-border;
+    -fx-background-radius: 0;
+}
+
+.book-progress-bar > .bar {
+    -fx-background-color: -reader-accent;
+    -fx-background-radius: 0;
+    -fx-padding: 1.5;
+}
+
+.reader-loading {
+    -fx-font-size: 15px;
+    -fx-text-fill: -reader-muted;
+}
+
+/* Table of contents side panel */
+
+.reader-toc {
+    -fx-background-color: -reader-bar;
+    -fx-border-color: transparent -reader-border transparent transparent;
+    -fx-border-width: 1;
+}
+
+.reader-toc-title {
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -reader-text;
+    -fx-padding: 0 0 0 6;
+}
+
+.toc-list {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-padding: 0;
+}
+
+.toc-list .list-cell {
+    -fx-background-color: transparent;
+    -fx-background-radius: 6;
+    -fx-padding: 6 8;
+    -fx-text-fill: -reader-text;
+    -fx-font-size: 12.5px;
+    -fx-wrap-text: true;
+}
+
+.toc-list .list-cell:filled:hover {
+    -fx-background-color: -reader-hover;
+}
+
+.toc-list .list-cell:filled:selected,
+.toc-list:focused .list-cell:filled:selected {
+    -fx-background-color: -reader-selection;
+    -fx-text-fill: -reader-text;
+}
+
+.toc-list .list-cell.current {
+    -fx-font-weight: bold;
+}
+
+/* Reader settings popup */
+
+.settings {
+    -fx-background-color: -surface;
+    -fx-background-radius: 12;
+    -fx-border-color: -border;
+    -fx-border-radius: 12;
+    -fx-padding: 14 16;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.16), 20, 0, 0, 6);
+}
+
+.settings .label {
+    -fx-text-fill: -text;
+}
+
+.settings .setting-name {
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -text-muted;
+}
+
+.settings .toggle-button {
+    -fx-background-color: -surface;
+    -fx-border-color: -border;
+    -fx-border-width: 1;
+    -fx-text-fill: -text;
+    -fx-padding: 6 12;
+    -fx-cursor: hand;
+    -fx-background-radius: 0;
+    -fx-border-radius: 0;
+}
+
+.settings .toggle-button.first {
+    -fx-background-radius: 8 0 0 8;
+    -fx-border-radius: 8 0 0 8;
+}
+
+.settings .toggle-button.last {
+    -fx-background-radius: 0 8 8 0;
+    -fx-border-radius: 0 8 8 0;
+}
+
+.settings .toggle-button:hover {
+    -fx-background-color: -surface-hover;
+}
+
+.settings .toggle-button:selected {
+    -fx-background-color: -accent;
+    -fx-border-color: -accent;
+    -fx-text-fill: white;
+}
+
+.settings .value {
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-min-width: 36;
+    -fx-alignment: center;
+}

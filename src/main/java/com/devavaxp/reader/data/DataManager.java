@@ -1,0 +1,364 @@
+package com.devavaxp.reader.data;
+
+import com.devavaxp.reader.model.Book;
+import com.devavaxp.reader.model.BookCollection;
+import com.devavaxp.reader.model.Preferences;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonParseException;
+import com.google.gson.annotations.SerializedName;
+
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
+
+/**
+ * Persists the whole library (collections, books and preferences) in a single JSON file.
+ * <p>
+ * By default the file lives in {@code <Documents>/Devava Reader/library.json}, where
+ * {@code <Documents>} is the user's real Documents folder (OneDrive redirection is honored).
+ * The location can be overridden with the system property {@code -Dreader.library=path}.
+ * <p>
+ * Writes are atomic (a temporary file is written and then renamed), so an unexpected
+ * shutdown never leaves the library half-written. The first time the application runs,
+ * a library file created by an earlier version (Spanish field names, stored under
+ * {@code Documents/MiLector/biblioteca.json}) is imported automatically so that no
+ * reading progress is lost; the old file itself is left untouched.
+ */
+public class DataManager {
+
+    public static final String LIBRARY_FOLDER = "Devava Reader";
+    public static final String LIBRARY_FILE = "library.json";
+    private static final String PATH_PROPERTY = "reader.library";
+
+    /** Root structure of the JSON file. Must be static so that Gson can instantiate it. */
+    private static class LibraryData {
+        @SerializedName(value = "collections", alternate = {"colecciones"})
+        List<BookCollection> collections = new ArrayList<>();
+
+        @SerializedName(value = "books", alternate = {"libros"})
+        List<Book> books = new ArrayList<>();
+
+        @SerializedName(value = "preferences", alternate = {"preferencias"})
+        Preferences preferences = new Preferences();
+    }
+
+    private final Path filePath;
+    private final boolean importLegacy;
+    private final Gson gson;
+    private LibraryData data;
+
+    /** Uses the default location and imports a legacy library on the first run. */
+    public DataManager() {
+        this(defaultPath(), true);
+    }
+
+    /** Uses an explicit file (tests, custom setups); no legacy import is attempted. */
+    public DataManager(Path filePath) {
+        this(filePath, false);
+    }
+
+    private DataManager(Path filePath, boolean importLegacy) {
+        this.filePath = filePath;
+        this.importLegacy = importLegacy;
+        this.gson = new GsonBuilder().setPrettyPrinting().create();
+        this.data = new LibraryData();
+        load();
+    }
+
+    // ------------------------------------------------------------------
+    // Location of the library file
+    // ------------------------------------------------------------------
+
+    /** Default location of the library file (see the class description). */
+    public static Path defaultPath() {
+        String configured = System.getProperty(PATH_PROPERTY);
+        if (configured != null && !configured.isBlank()) {
+            return Paths.get(configured);
+        }
+        return documentsFolder().resolve(LIBRARY_FOLDER).resolve(LIBRARY_FILE);
+    }
+
+    /**
+     * The user's Documents folder. On Windows this asks the shell for the real "Personal"
+     * folder, which may be redirected (for example to OneDrive); elsewhere it falls back to
+     * {@code ~/Documents} when it exists, and finally to the home directory.
+     */
+    public static Path documentsFolder() {
+        Path home = Paths.get(System.getProperty("user.home"));
+        try {
+            java.io.File dir = javax.swing.filechooser.FileSystemView.getFileSystemView().getDefaultDirectory();
+            if (dir != null && dir.isDirectory()) {
+                return dir.toPath().toAbsolutePath().normalize();
+            }
+        } catch (RuntimeException | LinkageError ignored) {
+            // Headless or unsupported platform: use the fallbacks below.
+        }
+        Path documents = home.resolve("Documents");
+        return Files.isDirectory(documents) ? documents : home;
+    }
+
+    /** Library files written by earlier versions, in order of preference. */
+    static List<Path> legacyCandidates() {
+        Path home = Paths.get(System.getProperty("user.home"));
+        Set<Path> candidates = new LinkedHashSet<>();
+        candidates.add(documentsFolder().resolve("MiLector").resolve("biblioteca.json"));
+        candidates.add(home.resolve("OneDrive").resolve("Documentos").resolve("MiLector").resolve("biblioteca.json"));
+        candidates.add(home.resolve("OneDrive").resolve("Documents").resolve("MiLector").resolve("biblioteca.json"));
+        candidates.add(home.resolve("Documents").resolve("MiLector").resolve("biblioteca.json"));
+        return new ArrayList<>(candidates);
+    }
+
+    public Path getFilePath() {
+        return filePath;
+    }
+
+    // ------------------------------------------------------------------
+    // Loading and saving
+    // ------------------------------------------------------------------
+
+    public final void load() {
+        if (Files.exists(filePath)) {
+            data = read(filePath);
+            return;
+        }
+        // First run: import the library of an earlier version if one exists.
+        Optional<Path> legacy = importLegacy
+                ? legacyCandidates().stream().filter(Files::isRegularFile).findFirst()
+                : Optional.empty();
+        if (legacy.isPresent()) {
+            data = read(legacy.get());
+            if (save()) {
+                System.out.println("Imported the existing library from " + legacy.get());
+            }
+            return;
+        }
+        data = new LibraryData();
+    }
+
+    private LibraryData read(Path source) {
+        try {
+            String content = Files.readString(source, StandardCharsets.UTF_8);
+            LibraryData parsed = content.isBlank() ? null : gson.fromJson(content, LibraryData.class);
+            return normalize(parsed);
+        } catch (IOException | JsonParseException e) {
+            System.err.println("Could not read the library (" + e.getMessage() + "); a copy is kept and a new one is started.");
+            backupCorruptFile(source);
+            return new LibraryData();
+        }
+    }
+
+    private static LibraryData normalize(LibraryData parsed) {
+        LibraryData d = parsed == null ? new LibraryData() : parsed;
+        if (d.collections == null) d.collections = new ArrayList<>();
+        if (d.books == null) d.books = new ArrayList<>();
+        if (d.preferences == null) d.preferences = new Preferences();
+        d.collections.removeIf(c -> c == null || c.getId() == null);
+        d.books.removeIf(b -> b == null || b.getId() == null || b.getCollectionId() == null);
+        return d;
+    }
+
+    private static void backupCorruptFile(Path source) {
+        try {
+            String stamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss"));
+            Files.copy(source, source.resolveSibling("library.corrupt-" + stamp + ".json"),
+                    StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException ignored) {
+            // If even the copy fails there is nothing else to do.
+        }
+    }
+
+    /** Creates the library file (and its folder) if it does not exist yet. */
+    public void saveIfMissing() {
+        if (!Files.exists(filePath)) {
+            save();
+        }
+    }
+
+    /** Saves the library. Returns {@code false} if the file could not be written. */
+    public synchronized boolean save() {
+        String json = gson.toJson(data);
+        IOException lastError = null;
+        // Cloud sync clients (OneDrive) may briefly lock the file while syncing: retry.
+        for (int attempt = 0; attempt < 3; attempt++) {
+            try {
+                writeAtomically(json);
+                return true;
+            } catch (IOException e) {
+                lastError = e;
+                try {
+                    Thread.sleep(120L * (attempt + 1));
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
+        }
+        System.err.println("Error saving the library: " + (lastError == null ? "unknown" : lastError.getMessage()));
+        return false;
+    }
+
+    private void writeAtomically(String json) throws IOException {
+        Path folder = filePath.toAbsolutePath().getParent();
+        if (folder != null) Files.createDirectories(folder);
+        Path temp = filePath.resolveSibling(filePath.getFileName() + ".tmp");
+        Files.writeString(temp, json, StandardCharsets.UTF_8);
+        try {
+            Files.move(temp, filePath, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+        } catch (AtomicMoveNotSupportedException e) {
+            Files.move(temp, filePath, StandardCopyOption.REPLACE_EXISTING);
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // Preferences
+    // ------------------------------------------------------------------
+
+    public Preferences getPreferences() {
+        return data.preferences;
+    }
+
+    // ------------------------------------------------------------------
+    // Collections
+    // ------------------------------------------------------------------
+
+    public List<BookCollection> getCollections() {
+        return data.collections;
+    }
+
+    public Optional<BookCollection> findCollection(String id) {
+        return data.collections.stream().filter(c -> Objects.equals(c.getId(), id)).findFirst();
+    }
+
+    public void addCollection(BookCollection collection) {
+        data.collections.add(collection);
+        save();
+    }
+
+    public void renameCollection(BookCollection collection, String newTitle) {
+        collection.setTitle(newTitle);
+        save();
+    }
+
+    /** Removes the collection and all its books from the library (the .epub files are not deleted). */
+    public void deleteCollection(BookCollection collection) {
+        data.books.removeIf(b -> Objects.equals(b.getCollectionId(), collection.getId()));
+        data.collections.removeIf(c -> Objects.equals(c.getId(), collection.getId()));
+        save();
+    }
+
+    public int countBooks(BookCollection collection) {
+        return (int) data.books.stream().filter(b -> Objects.equals(b.getCollectionId(), collection.getId())).count();
+    }
+
+    public int countRead(BookCollection collection) {
+        return (int) data.books.stream()
+                .filter(b -> Objects.equals(b.getCollectionId(), collection.getId()) && b.isRead())
+                .count();
+    }
+
+    // ------------------------------------------------------------------
+    // Books
+    // ------------------------------------------------------------------
+
+    public List<Book> getBooks() {
+        return data.books;
+    }
+
+    /** Books of a collection sorted by their custom order number. */
+    public List<Book> getBooksOf(String collectionId) {
+        List<Book> filtered = new ArrayList<>();
+        for (Book book : data.books) {
+            if (Objects.equals(book.getCollectionId(), collectionId)) {
+                filtered.add(book);
+            }
+        }
+        filtered.sort(Comparator.comparingInt(Book::getOrder).thenComparing(Book::getTitle, String.CASE_INSENSITIVE_ORDER));
+        return filtered;
+    }
+
+    public boolean hasBookWithPath(String collectionId, String path) {
+        Path wanted = Paths.get(path).toAbsolutePath().normalize();
+        return getBooksOf(collectionId).stream()
+                .anyMatch(b -> b.getFilePath() != null
+                        && Paths.get(b.getFilePath()).toAbsolutePath().normalize().equals(wanted));
+    }
+
+    /** Appends the book to its collection and saves. */
+    public void addBook(Book book) {
+        data.books.add(book);
+        normalizeOrder(book.getCollectionId());
+        save();
+    }
+
+    /** Adds several books at once (a single write to disk). */
+    public void addBooks(List<Book> books) {
+        if (books.isEmpty()) return;
+        data.books.addAll(books);
+        normalizeOrder(books.get(0).getCollectionId());
+        save();
+    }
+
+    public void deleteBook(Book book) {
+        data.books.removeIf(b -> Objects.equals(b.getId(), book.getId()));
+        normalizeOrder(book.getCollectionId());
+        save();
+    }
+
+    /**
+     * Moves the book {@code offset} positions (negative = upwards).
+     * Returns the new index inside the collection, or -1 if nothing moved.
+     */
+    public int moveBook(Book book, int offset) {
+        List<Book> list = getBooksOf(book.getCollectionId());
+        int index = -1;
+        for (int i = 0; i < list.size(); i++) {
+            if (Objects.equals(list.get(i).getId(), book.getId())) {
+                index = i;
+                break;
+            }
+        }
+        if (index < 0) return -1;
+        int target = Math.max(0, Math.min(list.size() - 1, index + offset));
+        if (target == index) return -1;
+        list.remove(index);
+        list.add(target, book);
+        for (int i = 0; i < list.size(); i++) {
+            list.get(i).setOrder(i + 1);
+        }
+        save();
+        return target;
+    }
+
+    /** Makes the order numbers consecutive (1, 2, 3...) without changing the relative order. */
+    private void normalizeOrder(String collectionId) {
+        List<Book> list = getBooksOf(collectionId);
+        for (int i = 0; i < list.size(); i++) {
+            list.get(i).setOrder(i + 1);
+        }
+    }
+
+    public int nextOrder(String collectionId) {
+        return getBooksOf(collectionId).stream().mapToInt(Book::getOrder).max().orElse(0) + 1;
+    }
+
+    /** The most recently opened book that is not finished yet, if any. */
+    public Optional<Book> lastReadBook() {
+        return data.books.stream()
+                .filter(b -> b.getLastReadAt() > 0 && !b.isRead())
+                .max(Comparator.comparingLong(Book::getLastReadAt));
+    }
+}
