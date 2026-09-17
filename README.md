@@ -133,4 +133,7 @@ size of each chapter.
 
 ## License
 
-Copyright © devava XP Studios. All rights reserved unless a license file states otherwise.
+Copyright © 2026 devava XP Studios. Released under the [MIT License](LICENSE).
+
+The packaged Windows build bundles third-party components under their own licenses:
+OpenJFX (GPL v2 with the Classpath Exception) and Gson (Apache License 2.0).
