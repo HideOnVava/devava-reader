@@ -32,7 +32,7 @@
     marginV: 36,
     fontSize: 20,
     lineHeight: 1.6,
-    fontFamily: 'Georgia, "Times New Roman", serif',
+    fontFamily: 'Georgia, "Times New Roman", "Noto Serif", "Liberation Serif", serif',
     background: '#FAFAF9',
     textColor: '#1C1917',
     linkColor: '#2563EB',

@@ -98,8 +98,10 @@ public class ReaderController implements Navigator.Screen, JsBridge.Listener {
     private record ViewState(int view, int total) {
     }
 
-    private static final String FONT_SERIF = "Georgia, \"Times New Roman\", serif";
-    private static final String FONT_SANS = "\"Segoe UI\", \"Helvetica Neue\", Arial, sans-serif";
+    // Web font stacks: the first family present on the system wins, so each platform gets a
+    // good match (Windows, macOS, then common Linux fonts, then the generic family).
+    private static final String FONT_SERIF = "Georgia, \"Times New Roman\", \"Noto Serif\", \"Liberation Serif\", \"DejaVu Serif\", serif";
+    private static final String FONT_SANS = "\"Segoe UI\", \"Helvetica Neue\", Arial, \"Noto Sans\", \"Liberation Sans\", \"DejaVu Sans\", sans-serif";
     private static final String HINT = "← →  page  ·  T contents  ·  Aa settings  ·  F11 full screen";
 
     @FXML private BorderPane root;

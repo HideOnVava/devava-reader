@@ -61,12 +61,12 @@
             </padding>
             <Button fx:id="moveUpButton" text="↑" styleClass="icon" onAction="#onMoveUp" focusTraversable="false">
                 <tooltip>
-                    <Tooltip text="Move up (Ctrl+↑)"/>
+                    <Tooltip text="Move up"/>
                 </tooltip>
             </Button>
             <Button fx:id="moveDownButton" text="↓" styleClass="icon" onAction="#onMoveDown" focusTraversable="false">
                 <tooltip>
-                    <Tooltip text="Move down (Ctrl+↓)"/>
+                    <Tooltip text="Move down"/>
                 </tooltip>
             </Button>
             <Region prefWidth="6"/>

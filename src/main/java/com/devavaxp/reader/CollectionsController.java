@@ -1,5 +1,6 @@
 package com.devavaxp.reader;
 
+import com.devavaxp.reader.data.AppDirectories;
 import com.devavaxp.reader.data.DataManager;
 import com.devavaxp.reader.data.TextUtils;
 import com.devavaxp.reader.model.Book;
@@ -17,6 +18,7 @@ import javafx.scene.control.MenuItem;
 import javafx.scene.control.ProgressBar;
 import javafx.scene.control.SeparatorMenuItem;
 import javafx.scene.control.TextField;
+import javafx.scene.control.Tooltip;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.MouseButton;
 import javafx.scene.layout.HBox;
@@ -84,12 +86,15 @@ public class CollectionsController implements Navigator.Screen {
                 case ENTER -> { openSelected(); ev.consume(); }
                 case DELETE -> { deleteSelected(); ev.consume(); }
                 case F2 -> { renameSelected(); ev.consume(); }
-                case UP -> { if (ev.isControlDown()) { onMoveUp(); ev.consume(); } }
-                case DOWN -> { if (ev.isControlDown()) { onMoveDown(); ev.consume(); } }
+                case UP -> { if (ev.isShortcutDown()) { onMoveUp(); ev.consume(); } }
+                case DOWN -> { if (ev.isShortcutDown()) { onMoveDown(); ev.consume(); } }
                 default -> { }
             }
         });
         collectionList.setContextMenu(createContextMenu());
+        String mod = AppDirectories.shortcutKey();
+        moveUpButton.setTooltip(new Tooltip("Move up (" + mod + "+↑). Available when no search or filter is active"));
+        moveDownButton.setTooltip(new Tooltip("Move down (" + mod + "+↓). Available when no search or filter is active"));
 
         // Search box and format filter
         searchField.textProperty().addListener((obs, previous, text) -> applyFilters());

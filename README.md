@@ -2,11 +2,11 @@
 
 [![Download the latest release](https://img.shields.io/github/v/release/HideOnVava/devava-reader?label=download&color=5b5bd6)](https://github.com/HideOnVava/devava-reader/releases/latest)
 [![CI](https://github.com/HideOnVava/devava-reader/actions/workflows/ci.yml/badge.svg)](https://github.com/HideOnVava/devava-reader/actions/workflows/ci.yml)
-[![Platform: Windows 10/11](https://img.shields.io/badge/platform-Windows%2010%2F11-0078D4)](#download-windows)
+[![Platforms: Windows, macOS, Linux](https://img.shields.io/badge/platforms-Windows%20%C2%B7%20macOS%20%C2%B7%20Linux-0078D4)](#download)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 A minimal, distraction-free desktop reader for **EPUB novels** and **PDF manga**, organized in
-collections — built by **devava XP Studios**.
+collections — built by **devava XP Studios** for Windows, macOS and Linux.
 
 Keep long series (light novels, sagas, manga) in collections, in the order *you* want, and
 pick up every volume exactly where you left it. No accounts, no cloud, no Java to install:
@@ -20,19 +20,21 @@ one download and it runs.
 | --- | --- |
 | ![EPUB reader, two columns](docs/screenshots/reader-epub.png) | ![PDF reader, double page, right to left](docs/screenshots/reader-pdf.png) |
 
-## Download (Windows)
+## Download
 
 **[⬇ Download the latest version](https://github.com/HideOnVava/devava-reader/releases/latest)**
-— Windows 10 or 11, 64-bit. Nothing else is needed.
+— 64-bit Windows 10/11, macOS 12 or later, or a Linux desktop. Nothing else is needed.
+On that page, under **Assets**, pick the file for your system:
 
-1. On that page, under **Assets**, click **`Devava-Reader-<version>-windows-x64-setup.exe`**.
-2. Open the downloaded file. If Windows shows *"Windows protected your PC"*, click
-   **More info → Run anyway** (see [why](#why-does-windows-show-a-warning) below).
-3. Keep the suggested folder (or choose another) and finish. Devava Reader appears in the
-   Start menu and, unless you untick the box, on the desktop. No administrator rights are needed.
-
-Prefer not to install anything? Download **`Devava-Reader-<version>-windows-x64-portable.zip`**
-instead, unzip it anywhere (a USB stick works) and open `Devava Reader.exe`.
+| System | File | Then |
+| --- | --- | --- |
+| **Windows** | `…-windows-x64-setup.exe` | Open it. If Windows shows *"Windows protected your PC"*, click **More info → Run anyway** ([why](#why-do-windows-and-macos-show-a-warning)). Keep the suggested folder and finish: Devava Reader appears in the Start menu and, unless you untick the box, on the desktop. No administrator rights needed. |
+| Windows, no install | `…-windows-x64-portable.zip` | Unzip anywhere (a USB stick works) and open `Devava Reader.exe`. |
+| **macOS** (Apple Silicon: M1 or later) | `…-macos-arm64.dmg` | Open the image and drag *Devava Reader* to *Applications*. The first launch is blocked because the app is not notarized: go to **System Settings → Privacy & Security**, scroll to the *Devava Reader* message and click **Open Anyway** ([why](#why-do-windows-and-macos-show-a-warning)). Only once. |
+| macOS (Intel) | `…-macos-x64.dmg` | Same as above. |
+| **Linux** (Ubuntu, Debian, Mint…) | `…-linux-x64.deb` | Double-click it, or `sudo apt install ./Devava-Reader-<version>-linux-x64.deb`. *Devava Reader* appears in the applications menu. |
+| Linux (Fedora, openSUSE…) | `…-linux-x64.rpm` | `sudo dnf install ./Devava-Reader-<version>-linux-x64.rpm` (or `zypper`). |
+| Linux, any distribution | `…-linux-x64.tar.gz` | `tar xf` it and run `Devava Reader/bin/Devava Reader`. Needs GTK 3, which every desktop has. |
 
 ### First steps
 
@@ -46,23 +48,28 @@ instead, unzip it anywhere (a USB stick works) and open `Devava Reader.exe`.
 
 ### Updating
 
-Download the new `…-setup.exe` and run it: it replaces the previous version in place. Your
-library (collections, volumes, reading progress and settings) is kept. With the portable
-version, unzip the new one and delete the old folder.
+Install the new version the same way: on Windows the installer replaces the previous version
+in place, on macOS drag the new app over the old one, on Linux install the new package (or
+unzip the new tarball and delete the old folder). Your library — collections, volumes,
+reading progress and settings — is kept.
 
 ### Uninstalling
 
-*Settings → Apps → Installed apps → Devava Reader → Uninstall* (or just delete the folder of the
-portable version). Your library file stays in `Documents\Devava Reader` in case you come back;
-your book files are never moved, copied or modified by the app.
+Windows: *Settings → Apps → Installed apps → Devava Reader → Uninstall*. macOS: drag the app
+to the Trash. Linux: `sudo apt remove devava-reader` (or `dnf`), or delete the extracted
+folder. Portable versions: just delete the folder. Your library file stays in your Documents
+folder (`Devava Reader/library.json`) in case you come back; your book files are never moved,
+copied or modified by the app.
 
-### Why does Windows show a warning?
+### Why do Windows and macOS show a warning?
 
-The downloads are not code-signed — a signing certificate costs money every year and this is a
-free project. SmartScreen therefore shows *"Windows protected your PC"* the first time you run
-an unsigned program; *More info → Run anyway* is all it takes. Every release is built
-automatically by GitHub Actions from the tagged source code, so the build log shows exactly what
-went into the files, and each release lists their SHA-256 checksums.
+The downloads are not code-signed — a Windows signing certificate and an Apple developer
+account cost money every year, and this is a free project. Windows therefore shows *"Windows
+protected your PC"* the first time (*More info → Run anyway*), and macOS blocks the first
+launch (*Privacy & Security → Open Anyway*); after that, both systems remember your choice.
+Every release is built automatically by GitHub Actions from the tagged source code, so the
+build log shows exactly what went into the files, and each release lists their SHA-256
+checksums.
 
 ## Features
 
@@ -86,6 +93,8 @@ went into the files, and each release lists their SHA-256 checksums.
 - Everything is stored in a single JSON file that the app creates on first launch.
 
 ## Keyboard shortcuts
+
+On macOS, `Ctrl` in the tables below means `⌘`.
 
 ### EPUB reader
 
@@ -141,11 +150,18 @@ on the volume), `F2` renames, `Del` removes the volume, `Ctrl+↑` / `Ctrl+↓` 
 
 ## Where the data lives
 
-The library file `library.json` is created automatically on first launch in
-`<Documents>\Devava Reader\`, where `<Documents>` is the user's real Documents folder
-(OneDrive redirection is honored). No manual setup is needed.
+The library file `library.json` is created automatically on first launch in a
+`Devava Reader` folder inside your documents:
 
-- Override the location with `-Dreader.library=path\to\library.json` (when running from
+- **Windows**: `<Documents>\Devava Reader\`, where `<Documents>` is the real Documents folder
+  reported by Windows (OneDrive redirection is honored).
+- **macOS**: `~/Documents/Devava Reader/`.
+- **Linux**: the XDG Documents folder (`~/Documents`, `~/Documentos`… as configured by the
+  desktop), or `~/.local/share/devava-reader/` on systems without one.
+
+No manual setup is needed.
+
+- Override the location with `-Dreader.library=path/to/library.json` (when running from
   source) or with the environment variable `JAVA_TOOL_OPTIONS=-Dreader.library=…` (packaged app).
 - Writes are atomic; a corrupt file is preserved as `library.corrupt-<date>.json`.
 - A library created by an earlier version of the app (Spanish field names under
@@ -182,12 +198,13 @@ Tests:
 ./mvnw test
 ```
 
-## Building the Windows application
+## Building the application
 
 This turns the source code into the same thing the [releases](https://github.com/HideOnVava/devava-reader/releases)
-contain: a folder with `Devava Reader.exe` and a bundled Java runtime, that runs on any Windows
-10/11 PC without Java installed. The steps below assume you have never done this before.
-Only the installer (step 6) needs an extra tool; everything else is included.
+contain: an application with a bundled Java runtime that runs without Java installed. Each
+system builds its own package on that system (Windows makes the `.exe`, Linux the `.deb`,
+macOS the `.dmg` — that is how `jpackage` works). The steps below assume you have never done
+this before. Windows first, then [Linux and macOS](#on-linux-and-macos).
 
 ### 1. Install a JDK 21 (once)
 
@@ -282,45 +299,86 @@ newer version over an older one upgrades it in place.
 | `The WiX Toolset 3.x is required` | Only for `-Type exe` / `msi`: install WiX as in step 6 and open a new PowerShell window. |
 | *Windows protected your PC* when starting the built app | Normal for unsigned programs: *More info → Run anyway*. |
 
+### On Linux and macOS
+
+The same build, driven by `packaging/build-unix.sh` (a Bash script) instead of the PowerShell one.
+
+1. **Install a JDK 21** with `jmods` (a full JDK, not a JRE):
+   - macOS: `brew install --cask temurin@21`, or the `.pkg` from
+     <https://adoptium.net/temurin/releases/?version=21> (choose *macOS*, your chip: *aarch64* for
+     Apple Silicon, *x64* for Intel, package *JDK*).
+   - Ubuntu / Debian: `sudo apt install openjdk-21-jdk` (Ubuntu 24.04+, Debian 12+ have it), or
+     the Adoptium `.tar.gz` from the same page, extracted anywhere.
+   - Fedora: `sudo dnf install java-21-openjdk-devel java-21-openjdk-jmods`.
+
+   Check with `java -version` (must say 21). If another Java comes first, pass
+   `--jdk-home /path/to/jdk-21` to the script.
+2. **Get the source**: `git clone https://github.com/HideOnVava/devava-reader.git` (or *Code →
+   Download ZIP* on GitHub and extract it), then `cd devava-reader`.
+3. **Build the application**:
+
+   ```bash
+   packaging/build-unix.sh
+   ```
+
+   The first run downloads Maven and the libraries (a few hundred MB, several minutes). The
+   result is `dist/Devava Reader/` on Linux (run `dist/Devava Reader/bin/Devava Reader`) or
+   `dist/Devava Reader.app` on macOS (double-click it, or move it to *Applications*).
+4. **Optional: build a package** — `packaging/build-unix.sh --type deb` (Debian/Ubuntu; needs
+   `fakeroot`: `sudo apt install fakeroot`), `--type rpm` (needs `rpm-build`), or
+   `--type dmg` on macOS (needs nothing extra). Add `--reuse-image` to skip recompiling when
+   the app image was just built.
+
+If `packaging/build-unix.sh` says *Permission denied*, run `chmod +x packaging/*.sh` (this
+happens when the source came as a ZIP instead of `git clone`).
+
 ### How the build works
 
-`build-windows.ps1` compiles with the Maven wrapper, copies the dependencies, builds a runtime
-image with `jlink` (the JDK modules listed in the script plus the JavaFX modules) and calls
-`jpackage` with that runtime and the application jars on the class path; the version number
-is read from `pom.xml`. Inside the image the application and its libraries run from the class
-path while JavaFX lives in the runtime image as proper modules: PDFBox ships as automatic
-modules, which `jlink` cannot link. When run from source (`javafx:run`, IDE) everything is on
-the module path instead, which is why `module-info.java` also requires
-`org.apache.commons.logging` — PDFBox needs it but, being automatic, cannot declare it.
-Installers are built from that same image with `--app-image`, so the ZIP and the installer of a
-release contain identical bits.
+`build-windows.ps1` and `build-unix.sh` do the same thing: compile with the Maven wrapper,
+copy the dependencies, build a runtime image with `jlink` (the JDK modules listed in
+`packaging/jdk-modules.txt` plus the JavaFX modules for that platform) and call `jpackage` with
+that runtime and the application jars on the class path; the version number is read from
+`pom.xml`. Inside the image the application and its libraries run from the class path while
+JavaFX lives in the runtime image as proper modules: PDFBox ships as automatic modules, which
+`jlink` cannot link. When run from source (`javafx:run`, IDE) everything is on the module path
+instead, which is why `module-info.java` also requires `org.apache.commons.logging` — PDFBox
+needs it but, being automatic, cannot declare it. Installers and disk images are built from
+that same image with `--app-image`, so the portable download and the installer of a release
+contain identical bits.
 
 ## Releasing a new version
 
 Releases are built and published by GitHub Actions ([`.github/workflows/release.yml`](.github/workflows/release.yml))
 so that every download comes from a clean, reproducible build of a tagged commit — nothing is
-uploaded from a developer's PC. To publish, for example, version 1.2.0:
+uploaded from a developer's PC. To publish, for example, version 1.3.0:
 
-1. Set `<version>1.2.0</version>` in `pom.xml`.
-2. Add a `## [1.2.0] - <date>` section to [`CHANGELOG.md`](CHANGELOG.md) describing the
+1. Set `<version>1.3.0</version>` in `pom.xml`.
+2. Add a `## [1.3.0] - <date>` section to [`CHANGELOG.md`](CHANGELOG.md) describing the
    changes (it becomes the "What's new" text of the release) and the link reference at the
    bottom of the file.
 3. Commit and push, then create and push the tag:
 
    ```bash
-   git tag v1.2.0
-   git push origin v1.2.0
+   git tag v1.3.0
+   git push origin v1.3.0
    ```
 
-4. The **Release** workflow starts automatically: it checks that the tag matches `pom.xml`,
-   runs the tests, builds the installer and the portable ZIP with `packaging/release.ps1`,
-   computes the SHA-256 checksums and publishes the release with notes generated from the
-   changelog. It appears under **Releases** after a few minutes.
+4. The **Release** workflow starts automatically. Four jobs build in parallel — Windows,
+   Linux (on Ubuntu 22.04, so the `.deb` also installs on older releases), macOS Apple Silicon
+   and macOS Intel — each one checks that the tag matches `pom.xml`, runs the tests, builds its
+   files with `packaging/release.ps1` or `packaging/release.sh`, and then **smoke-tests the
+   result on a real desktop session**: the packaged app is installed, started with a generated
+   sample library (`tools/samples`), driven through the library, the EPUB reader and the PDF
+   reader with real keyboard and mouse events (`tools/smoke`), and closed; the screenshots and
+   the app log are kept as workflow artifacts. A final job gathers everything, computes the
+   SHA-256 checksums, generates the notes from the changelog (`packaging/release-notes.ps1`)
+   and publishes the release. It appears under **Releases** after about ten minutes.
 
-To rehearse without publishing, open **Actions → Release → Run workflow**: the same build runs
-and the files are attached to the workflow run as an artifact instead of a release. The script
-can also be run locally (`.\packaging\release.ps1`, or with `-SkipInstaller` when WiX is not
-installed); its output in `dist\release` is what the workflow uploads.
+To rehearse without publishing, open **Actions → Release → Run workflow**: the same builds and
+smoke tests run and the files are attached to the workflow run as artifacts instead of a
+release. The scripts can also be run locally (`.\packaging\release.ps1` on Windows — add
+`-SkipInstaller` when WiX is not installed — or `packaging/release.sh` on Linux/macOS); their
+output in `dist/release` is what the workflow uploads.
 
 ## Project layout
 
@@ -337,6 +395,7 @@ com.devavaxp.reader
 ├── bridge/JsBridge             object exposed to reader.js (link clicks, events)
 ├── data/DataManager            JSON persistence (Gson), atomic and fault-tolerant, legacy import,
 │                               collection order/pinning and format queries
+├── data/AppDirectories         per-system Documents / library folder and shortcut key name
 ├── data/TextUtils              natural order, titles, plurals
 ├── epub/EpubExtractor          safe ZIP extraction into the temp cache
 ├── epub/EpubParser             container.xml → OPF (spine, manifest) → nav / NCX (contents)
@@ -350,13 +409,19 @@ resources/com/devavaxp/reader
 ├── *.fxml, styles.css          views and stylesheet
 └── reader.js                   pagination engine (injected into every EPUB chapter)
 packaging/
-├── build-windows.ps1           jlink + jpackage build script (app image or installer)
-├── release.ps1                 release files: installer, portable ZIP, checksums, notes
+├── build-windows.ps1           jlink + jpackage build (app image, .exe / .msi installer)
+├── build-unix.sh               the same for Linux (.deb / .rpm) and macOS (.dmg / .pkg)
+├── jdk-modules.txt             JDK modules linked into the runtime, shared by both scripts
+├── release.ps1 / release.sh    release files of one platform + checksums
+├── release-notes.ps1           gathers every platform's files, checksums and release text
 ├── release-notes.md            template of the release text
-└── icon.ico                    application icon
+└── icon.ico / .icns / .png     application icon for Windows / macOS / Linux
+tools/
+├── samples/                    generators of sample books and a sample library (original content)
+└── smoke/                      per-system smoke tests that drive the packaged app and take screenshots
 .github/workflows/
-├── ci.yml                      build and tests on every push / pull request
-└── release.yml                 build and publish a release from a version tag
+├── ci.yml                      build and tests on every push / pull request (three systems)
+└── release.yml                 build, smoke-test and publish a release from a version tag
 docs/screenshots/               images used by this README
 ```
 
