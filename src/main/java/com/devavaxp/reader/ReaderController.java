@@ -25,8 +25,6 @@ import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
 import javafx.scene.control.ProgressBar;
-import javafx.scene.control.ToggleButton;
-import javafx.scene.control.ToggleGroup;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyCombination;
 import javafx.scene.input.KeyEvent;
@@ -35,7 +33,6 @@ import javafx.scene.input.MouseEvent;
 import javafx.scene.input.ScrollEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
-import javafx.scene.layout.Priority;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.web.WebEngine;
@@ -56,7 +53,6 @@ import java.util.ArrayDeque;
 import java.util.Base64;
 import java.util.Deque;
 import java.util.Locale;
-import java.util.function.Consumer;
 
 /**
  * Reading screen. The WebView shows one chapter (one spine file) at a time; pagination
@@ -817,11 +813,11 @@ public class ReaderController implements Navigator.Screen, JsBridge.Listener {
         fontRow.setAlignment(Pos.CENTER_LEFT);
         box.getChildren().add(section("FONT SIZE", fontRow));
 
-        box.getChildren().add(section("TYPEFACE", toggleRow(prefs.getTypeface(), this::changeTypeface,
+        box.getChildren().add(section("TYPEFACE", UiControls.segmented(prefs.getTypeface(), this::changeTypeface,
                 new String[][]{{Preferences.TYPEFACE_SERIF, "Serif"}, {Preferences.TYPEFACE_SANS, "Sans"}})));
-        box.getChildren().add(section("THEME", toggleRow(prefs.getTheme(), this::changeTheme,
+        box.getChildren().add(section("THEME", UiControls.segmented(prefs.getTheme(), this::changeTheme,
                 new String[][]{{Preferences.THEME_LIGHT, "Light"}, {Preferences.THEME_SEPIA, "Sepia"}, {Preferences.THEME_DARK, "Dark"}})));
-        box.getChildren().add(section("COLUMNS", toggleRow(String.valueOf(prefs.getColumns()),
+        box.getChildren().add(section("COLUMNS", UiControls.segmented(String.valueOf(prefs.getColumns()),
                 v -> changeColumns(Integer.parseInt(v)), new String[][]{{"1", "One"}, {"2", "Two"}})));
 
         Popup popup = new Popup();
@@ -836,34 +832,6 @@ public class ReaderController implements Navigator.Screen, JsBridge.Listener {
         Label label = new Label(name);
         label.getStyleClass().add("setting-name");
         return new VBox(6, label, content);
-    }
-
-    /** Row of mutually exclusive buttons; {@code options} are {value, label} pairs. */
-    private static HBox toggleRow(String current, Consumer<String> onChange, String[][] options) {
-        ToggleGroup group = new ToggleGroup();
-        HBox row = new HBox(0);
-        row.setAlignment(Pos.CENTER_LEFT);
-        for (int i = 0; i < options.length; i++) {
-            String value = options[i][0];
-            ToggleButton tb = new ToggleButton(options[i][1]);
-            tb.setToggleGroup(group);
-            tb.setUserData(value);
-            tb.setSelected(value.equalsIgnoreCase(current));
-            tb.setMaxWidth(Double.MAX_VALUE);
-            HBox.setHgrow(tb, Priority.ALWAYS);
-            if (i == 0) tb.getStyleClass().add("first");
-            if (i == options.length - 1) tb.getStyleClass().add("last");
-            row.getChildren().add(tb);
-        }
-        group.selectedToggleProperty().addListener((obs, previous, selected) -> {
-            if (selected == null) {
-                // One option must always stay active.
-                if (previous != null) group.selectToggle(previous);
-                return;
-            }
-            onChange.accept(String.valueOf(selected.getUserData()));
-        });
-        return row;
     }
 
     // ------------------------------------------------------------------

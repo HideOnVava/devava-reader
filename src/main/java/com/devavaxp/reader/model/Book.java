@@ -17,6 +17,11 @@ import java.util.UUID;
  */
 public class Book {
 
+    /** Reflowable e-book read with the pagination engine. */
+    public static final String FORMAT_EPUB = "epub";
+    /** Fixed-page document (comics/manga). Only recorded for now; a PDF reader is not implemented yet. */
+    public static final String FORMAT_PDF = "pdf";
+
     @SerializedName("id")
     private String id;
 
@@ -45,6 +50,10 @@ public class Book {
     @SerializedName(value = "lastReadAt", alternate = {"ultimaLectura"})
     private long lastReadAt;
 
+    /** File format ({@link #FORMAT_EPUB} or {@link #FORMAT_PDF}); missing in older files means EPUB. */
+    @SerializedName("format")
+    private String format;
+
     public Book(String collectionId, String title, String filePath, int order) {
         this.id = UUID.randomUUID().toString();
         this.collectionId = collectionId;
@@ -55,6 +64,13 @@ public class Book {
         this.read = false;
         this.savedPosition = "";
         this.lastReadAt = 0L;
+        this.format = formatOf(filePath);
+    }
+
+    /** Format implied by a file name: {@code .pdf} is PDF, anything else is treated as EPUB. */
+    public static String formatOf(String filePath) {
+        String name = filePath == null ? "" : filePath.trim().toLowerCase(Locale.ROOT);
+        return name.endsWith(".pdf") ? FORMAT_PDF : FORMAT_EPUB;
     }
 
     // ------------------------------------------------------------------
@@ -87,6 +103,20 @@ public class Book {
 
     public long getLastReadAt() { return lastReadAt; }
     public void setLastReadAt(long lastReadAt) { this.lastReadAt = lastReadAt; }
+
+    /** Normalized format: PDF when recorded as such, EPUB otherwise (including older files). */
+    public String getFormat() {
+        return FORMAT_PDF.equalsIgnoreCase(format) ? FORMAT_PDF : FORMAT_EPUB;
+    }
+
+    /** The format exactly as stored; null when the file was written before formats existed. */
+    public String getRawFormat() {
+        return format;
+    }
+
+    public void setFormat(String format) {
+        this.format = format;
+    }
 
     // ------------------------------------------------------------------
     // Reading position helpers
