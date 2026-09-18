@@ -4,6 +4,7 @@ import com.devavaxp.reader.data.DataManager;
 import com.devavaxp.reader.epub.EpubExtractor;
 import com.devavaxp.reader.model.Preferences;
 import javafx.application.Application;
+import javafx.application.Platform;
 import javafx.scene.Scene;
 import javafx.scene.image.Image;
 import javafx.scene.image.PixelWriter;
@@ -51,6 +52,25 @@ public class ReaderApp extends Application {
         // scene size, and the window would open at 720x480 instead of the saved size.
         stage.setMinWidth(720);
         stage.setMinHeight(480);
+        if (!stage.isMaximized()) {
+            Platform.runLater(() -> restoreSize(stage, prefs.getWindowWidth(), prefs.getWindowHeight()));
+        }
+    }
+
+    /**
+     * Some window managers (seen with GTK on X11) map the window at a size other than the one
+     * the scene asked for. Once the window is mapped a resize request is honoured, so re-apply
+     * the saved size — keeping whatever the decorations add — when it was not respected.
+     */
+    private static void restoreSize(Stage stage, double sceneWidth, double sceneHeight) {
+        Scene scene = stage.getScene();
+        if (scene == null || stage.isMaximized() || stage.isFullScreen()) return;
+        double decorationWidth = Math.max(0, stage.getWidth() - scene.getWidth());
+        double decorationHeight = Math.max(0, stage.getHeight() - scene.getHeight());
+        if (Math.abs(scene.getWidth() - sceneWidth) > 2 || Math.abs(scene.getHeight() - sceneHeight) > 2) {
+            stage.setWidth(sceneWidth + decorationWidth);
+            stage.setHeight(sceneHeight + decorationHeight);
+        }
     }
 
     private void close(Stage stage) {

@@ -14,6 +14,10 @@ app="$1"; samples="$2"; out="$3"
 mkdir -p "$out"
 library="$samples/library.json"
 
+# Hosted runners have a small 1024x768 display: hide the Dock so that the whole window fits.
+defaults write com.apple.dock autohide -bool true && killall Dock 2>/dev/null || true
+sleep 2
+
 JAVA_TOOL_OPTIONS="-Dreader.library=$library" "$app/Contents/MacOS/Devava Reader" >"$out/app.log" 2>&1 &
 app_pid=$!
 
@@ -33,7 +37,9 @@ shot() { screencapture -x "$out/$1.png"; echo "screenshot: $1"; }
 # every click because the readers maximize the window and restore it afterwards.
 click() {
     local pos wx wy
-    pos="$(se -e 'set frontmost to true' -e 'get position of window 1')"
+    # Put the window at the top-left first: after a maximized reader is restored it may sit
+    # lower and its bottom buttons would fall off the small screen.
+    pos="$(se -e 'set frontmost to true' -e 'set position of window 1 to {12, 30}' -e 'get position of window 1')"
     wx="${pos%%,*}"; wy="${pos##*, }"; wy="${wy//[[:space:]]/}"
     se -e "click at {$((wx + $1)), $((wy + 28 + $2))}" >/dev/null
     sleep "${3:-1}"

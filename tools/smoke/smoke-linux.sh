@@ -36,6 +36,13 @@ done
 [[ -n "$wid" ]] || { echo "No window appeared"; cat "$out/app.log"; exit 1; }
 sleep 4
 echo "window $wid: $(xdotool getwindowgeometry "$wid" | tr '\n' ' ')"
+xprop -id "$wid" WM_NORMAL_HINTS _NET_WM_STATE 2>/dev/null || true
+geometry="$(xdotool getwindowgeometry "$wid" | sed -n 's/.*Geometry: //p')"
+if [[ "${geometry%x*}" -lt 990 ]]; then
+    echo "WARNING: the window opened at $geometry instead of about 1000x680; resizing it for the test"
+    xdotool windowsize "$wid" 1000 680
+    sleep 2
+fi
 
 # One Stage means one X window, but it is looked up again before every action so that the
 # test keeps working if JavaFX ever re-creates it (for example when leaving a maximized reader).
