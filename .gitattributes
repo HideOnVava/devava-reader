@@ -3,3 +3,4 @@
 *.ps1 text
 *.java text
 *.md text
+mvnw text eol=lf
