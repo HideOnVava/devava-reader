@@ -1,0 +1,68 @@
+# Builds the Windows installer and portable ZIP and publishes them as a GitHub release.
+#
+# Triggered by pushing a version tag such as v1.2.0 (it must match the version in pom.xml
+# and have a section in CHANGELOG.md). Running it by hand from the Actions tab is a dry
+# run: everything is built and kept as a workflow artifact, but no release is created.
+name: Release
+
+on:
+  push:
+    tags: ["v[0-9]+.[0-9]+.[0-9]+"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build and publish (Windows)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: Check that the tag matches the version in pom.xml
+        if: github.ref_type == 'tag'
+        run: |
+          $version = ([xml](Get-Content pom.xml)).project.version
+          if ("v$version" -ne "${{ github.ref_name }}") {
+            throw "Tag ${{ github.ref_name }} does not match the pom.xml version $version."
+          }
+
+      - name: Run the tests
+        run: .\mvnw.cmd -B verify
+
+      - name: Build the release files (installer, portable ZIP, checksums, notes)
+        run: .\packaging\release.ps1
+
+      - name: Show what was built
+        run: |
+          Get-ChildItem dist\release
+          Get-Content dist\release\SHA256SUMS.txt
+
+      - name: Keep the files as a workflow artifact (dry run)
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-files
+          path: dist/release
+
+      - name: Publish the GitHub release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = "${{ github.ref_name }}"
+          $files = Get-ChildItem dist\release -File |
+            Where-Object { $_.Name -ne "RELEASE_NOTES.md" } |
+            ForEach-Object { $_.FullName }
+          gh release create $tag $files `
+            --title "Devava Reader $($tag.Substring(1))" `
+            --notes-file dist\release\RELEASE_NOTES.md `
+            --verify-tag

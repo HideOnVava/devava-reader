@@ -1,0 +1,43 @@
+# Changelog
+
+All notable changes to Devava Reader are documented here. The format follows
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and versions follow
+[Semantic Versioning](https://semver.org/). Each release on GitHub takes its notes from
+the matching section of this file.
+
+## [1.1.0] - 2026-09-17
+
+First public release.
+
+### Added
+- **PDF / manga reader**: pages rendered as images with Apache PDFBox, single or double-page
+  spreads (the cover and wide pages stand alone), left-to-right or right-to-left reading
+  direction, fit to the whole page or to the width, the PDF outline as table of contents,
+  and progress by page. Shortcuts: `R` direction, `W` fit, `1` / `2` layout.
+- Collections can mix `.epub` and `.pdf` volumes; both are accepted by the *Add books*
+  dialog and by drag & drop, and PDF volumes show a **PDF** badge.
+- **Library search and filters**: find collections by name, show only EPUB or only PDF
+  collections, pin favourites so they stay on top, and reorder collections manually
+  (`Ctrl+↑` / `Ctrl+↓`).
+- Windows installer (`-setup.exe`) and portable ZIP, built by GitHub Actions from every
+  version tag, with SHA-256 checksums.
+
+### Changed
+- The packaged application now ships a jlink runtime image (JDK modules + JavaFX) and runs
+  from the class path, which is what makes PDFBox usable inside the bundle.
+- Reader themes (light / sepia / dark) are shared by the EPUB and PDF readers.
+
+## [1.0.0] - 2026-09-17
+
+Initial version, not published as a release.
+
+- EPUB reader with a two-page (or single-page) view and exact pagination, table of
+  contents, footnote and internal links, font size / typeface / theme / column settings and
+  progress weighted by chapter size.
+- Collections of volumes with custom ordering, progress bars and read/unread status, and a
+  "Continue reading" card.
+- Library stored in a single JSON file under `Documents\Devava Reader`, created
+  automatically; the previous Spanish library file is imported on first launch.
+
+[1.1.0]: https://github.com/HideOnVava/devava-reader/releases/tag/v1.1.0
+[1.0.0]: https://github.com/HideOnVava/devava-reader/commit/bfcfb71
