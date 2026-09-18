@@ -72,37 +72,32 @@ function Shot($name) {
     $g.Dispose(); $bmp.Save("$Out\$name.png"); $bmp.Dispose()
     Write-Host "screenshot: $name"
 }
-# Coordinates relative to the 1000x680 client area; the visible frame adds a 32 px title bar.
-function Click($x, $y, $wait = 1) {
-    $h = Window; [Smoke]::SetForegroundWindow($h) | Out-Null; Start-Sleep -Milliseconds 200
-    $r = Rect $h
-    [Smoke]::SetCursorPos($r.Left + 1 + $x, $r.Top + 32 + $y) | Out-Null; Start-Sleep -Milliseconds 120
-    [Smoke]::mouse_event(0x0002, 0, 0, 0, [UIntPtr]::Zero); Start-Sleep -Milliseconds 60; [Smoke]::mouse_event(0x0004, 0, 0, 0, [UIntPtr]::Zero)
-    Start-Sleep -Seconds $wait
-}
 function Key($keys, $wait = 1) {
     $h = Window; [Smoke]::SetForegroundWindow($h) | Out-Null; Start-Sleep -Milliseconds 200
     [System.Windows.Forms.SendKeys]::SendWait($keys); Start-Sleep -Seconds $wait
 }
 
 Window | Out-Null; Start-Sleep -Seconds 4
+# The whole flow is driven with the keyboard, so it does not depend on window size or position:
+# the library focuses its list with the first collection selected, Enter opens a collection,
+# a collection focuses its list with the first volume selected, Enter opens the reader and
+# Escape goes back one screen.
 Shot "01-library"
-Click 920 178 8                     # "Read" on the Continue reading card -> EPUB reader
-Shot "02-reader-epub"
-Key "{RIGHT}{RIGHT}"
-Shot "03-reader-epub-next-pages"
-Key "t"
-Shot "04-reader-epub-contents"
-Key "{ESC}{ESC}" 2
-Shot "05-collection-novel"
-Click 37 45 2                       # back to the library
-Click 299 328 1                     # select "Sample Manga"
-Click 928 640 2                     # Open
+Key "{ENTER}"                       # open "The Lantern Road"
+Shot "02-collection-novel"
+Key "{DOWN}"; Key "{ENTER}" 8       # Vol. 2 -> EPUB reader
+Shot "03-reader-epub"
+Key "{RIGHT}"; Key "{RIGHT}"
+Shot "04-reader-epub-next-pages"
+Key "t"                             # contents panel
+Shot "05-reader-epub-contents"
+Key "{ESC}"; Key "{ESC}" 2          # close contents, back to the collection
+Key "{ESC}"                         # back to the library
+Key "{DOWN}"; Key "{ENTER}"         # "Sample Manga"
 Shot "06-collection-manga"
-Click 299 120 1                     # select Vol. 1
-Click 928 640 8                     # Read -> PDF reader
+Key "{ENTER}" 8                     # Vol. 1 -> PDF reader
 Shot "07-reader-pdf"
-Key "{LEFT}{LEFT}"                  # right-to-left: Left goes forward
+Key "{LEFT}"; Key "{LEFT}"          # right-to-left: Left goes forward
 Shot "08-reader-pdf-next-spread"
 Key "{ESC}" 2
 
