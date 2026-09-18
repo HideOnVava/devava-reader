@@ -9,6 +9,9 @@ track reading progress per volume, and read in a clean two-page "open book" layo
 ## Features
 
 - **Collections** of volumes with custom ordering, progress bars and read/unread status.
+- **Library search and filters**: find collections by name, filter them by the format of their
+  volumes (all / EPUB only / PDF only), pin favourites so they always stay on top, and reorder
+  collections manually.
 - **Two-page (or single-page) reading view** with exact pagination: no lost or clipped pages.
 - **Table of contents** side panel (EPUB 3 `nav` and EPUB 2 NCX).
 - **Footnote and internal links** open in place, with a back button to return.
@@ -58,6 +61,9 @@ The library file `library.json` is created automatically on first launch in
 - A library created by an earlier version of the app (Spanish field names under
   `Documents\MiLector\biblioteca.json`) is imported automatically the first time, so no reading
   progress is lost. The old file is left untouched.
+- Every volume records its `format` (`epub` today; `pdf` is reserved for the upcoming fixed-page
+  reader), and every collection records its position and whether it is pinned. Files written
+  before these fields existed load normally and get them filled in.
 
 While a book is open, its EPUB is extracted to `%TEMP%\DevavaReader\<id>` and removed on exit.
 
@@ -79,6 +85,14 @@ While a book is open, its EPUB is extracted to `%TEMP%\DevavaReader\<id>` and re
 The **Aa** button opens the settings popup: font size, typeface, theme and columns.
 They are saved with the library.
 
+In the library: type in the search box to filter collections by name (`Esc` clears it, `↓`
+jumps to the list), the **All / EPUB / PDF** buttons filter by the format of the volumes a
+collection holds (a collection only counts as "EPUB" or "PDF" when every volume in it has
+that format; empty or mixed collections only appear under *All*), right-click a collection to
+**pin** or unpin it (pinned collections are always listed first), and `Ctrl+↑` / `Ctrl+↓` or
+the arrow buttons move a collection within its group. Moving is only available while the full,
+unfiltered list is shown, so that a position always means the real position.
+
 In a collection: `Enter` or double-click opens the reader, `F2` renames, `Del` removes the
 volume, `Ctrl+↑` / `Ctrl+↓` reorder, and `.epub` files can be dropped onto the list.
 
@@ -88,12 +102,14 @@ volume, `Ctrl+↑` / `Ctrl+↓` reorder, and `.epub` files can be dropped onto t
 com.devavaxp.reader
 ├── ReaderApp / Launcher        startup, single window and window preferences
 ├── Navigator                   screen switching on a single Scene
-├── CollectionsController       library: collections and "continue reading"
+├── CollectionsController       library: search, filters, pinning, ordering, "continue reading"
 ├── VolumesController           volumes of a collection: import, order, mark, read
 ├── ReaderController            reader: chapters, keyboard/mouse, contents, settings, progress
+├── UiControls                  small controls built in code (segmented button rows)
 ├── Dialogs                     dialogs styled like the app
 ├── bridge/JsBridge             object exposed to reader.js (link clicks, events)
-├── data/DataManager            JSON persistence (Gson), atomic and fault-tolerant, legacy import
+├── data/DataManager            JSON persistence (Gson), atomic and fault-tolerant, legacy import,
+│                               collection order/pinning and format queries
 ├── data/TextUtils              natural order, titles, plurals
 ├── epub/EpubExtractor          safe ZIP extraction into the temp cache
 ├── epub/EpubParser             container.xml → OPF (spine, manifest) → nav / NCX (contents)

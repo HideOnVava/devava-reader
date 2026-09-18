@@ -168,7 +168,31 @@ public class DataManager {
         if (d.preferences == null) d.preferences = new Preferences();
         d.collections.removeIf(c -> c == null || c.getId() == null);
         d.books.removeIf(b -> b == null || b.getId() == null || b.getCollectionId() == null);
+        // Books saved by earlier versions carry no format: derive it once from the file name.
+        for (Book b : d.books) {
+            if (b.getRawFormat() == null) b.setFormat(Book.formatOf(b.getFilePath()));
+        }
+        normalizeCollectionOrder(d.collections);
         return d;
+    }
+
+    /**
+     * Sorts the collections into their display order (pinned first, then by position) and
+     * renumbers them 1..n. Collections without a position (older files, or new ones) keep
+     * their relative order and go after the positioned ones.
+     */
+    private static void normalizeCollectionOrder(List<BookCollection> collections) {
+        Comparator<BookCollection> byPinned = Comparator.comparing((BookCollection c) -> !c.isPinned());
+        Comparator<BookCollection> byOrder = Comparator.comparingInt(c -> c.getOrder() > 0 ? c.getOrder() : Integer.MAX_VALUE);
+        collections.sort(byPinned.thenComparing(byOrder)); // List.sort is stable
+        renumber(collections);
+    }
+
+    /** Assigns positions 1..n following the current order of the list. */
+    private static void renumber(List<BookCollection> collections) {
+        for (int i = 0; i < collections.size(); i++) {
+            collections.get(i).setOrder(i + 1);
+        }
     }
 
     private static void backupCorruptFile(Path source) {
@@ -235,16 +259,21 @@ public class DataManager {
     // Collections
     // ------------------------------------------------------------------
 
+    /** All collections in display order: pinned ones first, then by their custom position. */
     public List<BookCollection> getCollections() {
-        return data.collections;
+        return List.copyOf(data.collections);
     }
 
     public Optional<BookCollection> findCollection(String id) {
         return data.collections.stream().filter(c -> Objects.equals(c.getId(), id)).findFirst();
     }
 
+    /** Appends the collection at the end of the (unpinned) list and saves. */
     public void addCollection(BookCollection collection) {
+        collection.setPinned(false);
+        collection.setOrder(data.collections.size() + 1);
         data.collections.add(collection);
+        normalizeCollectionOrder(data.collections);
         save();
     }
 
@@ -257,7 +286,70 @@ public class DataManager {
     public void deleteCollection(BookCollection collection) {
         data.books.removeIf(b -> Objects.equals(b.getCollectionId(), collection.getId()));
         data.collections.removeIf(c -> Objects.equals(c.getId(), collection.getId()));
+        normalizeCollectionOrder(data.collections);
         save();
+    }
+
+    /**
+     * Pins or unpins a collection. A pinned collection joins the end of the pinned group
+     * (listed first); an unpinned one stays where it was on screen, which now means right
+     * after the pinned group. Relative order among the other collections is kept.
+     */
+    public void setCollectionPinned(BookCollection collection, boolean pinned) {
+        collection.setPinned(pinned);
+        normalizeCollectionOrder(data.collections);
+        save();
+    }
+
+    /** Whether {@link #moveCollection} would actually move the collection. */
+    public boolean canMoveCollection(BookCollection collection, int offset) {
+        return moveTarget(collection, offset) >= 0;
+    }
+
+    /**
+     * Moves the collection {@code offset} positions (negative = upwards) inside its group
+     * (pinned or regular): a collection never crosses the pinned boundary this way.
+     * Returns the new index in the display order, or -1 if nothing moved.
+     */
+    public int moveCollection(BookCollection collection, int offset) {
+        int target = moveTarget(collection, offset);
+        if (target < 0) return -1;
+        BookCollection removed = null;
+        for (BookCollection c : data.collections) {
+            if (Objects.equals(c.getId(), collection.getId())) removed = c;
+        }
+        data.collections.remove(removed);
+        data.collections.add(target, removed);
+        // The list is now in the wanted display order: renumber without re-sorting.
+        renumber(data.collections);
+        save();
+        return target;
+    }
+
+    private int moveTarget(BookCollection collection, int offset) {
+        int index = -1;
+        for (int i = 0; i < data.collections.size(); i++) {
+            if (Objects.equals(data.collections.get(i).getId(), collection.getId())) {
+                index = i;
+                break;
+            }
+        }
+        if (index < 0 || offset == 0) return -1;
+        // The list is kept in display order, so the pinned group is a prefix of it.
+        int pinnedCount = (int) data.collections.stream().filter(BookCollection::isPinned).count();
+        int groupStart = collection.isPinned() ? 0 : pinnedCount;
+        int groupEnd = collection.isPinned() ? pinnedCount - 1 : data.collections.size() - 1;
+        int target = Math.max(groupStart, Math.min(groupEnd, index + offset));
+        return target == index ? -1 : target;
+    }
+
+    /**
+     * Whether the collection contains at least one book and every book has the given
+     * format. Empty and mixed collections are exclusive to no format.
+     */
+    public boolean hasOnlyFormat(BookCollection collection, String format) {
+        List<Book> books = getBooksOf(collection.getId());
+        return !books.isEmpty() && books.stream().allMatch(b -> b.getFormat().equalsIgnoreCase(format));
     }
 
     public int countBooks(BookCollection collection) {

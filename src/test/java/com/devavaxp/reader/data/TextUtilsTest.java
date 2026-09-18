@@ -50,6 +50,17 @@ class TextUtilsTest {
     }
 
     @Test
+    void bookFormatComesFromTheFileExtension() {
+        assertEquals(Book.FORMAT_EPUB, Book.formatOf("C:/x/Volume 1.epub"));
+        assertEquals(Book.FORMAT_PDF, Book.formatOf("C:/x/Chapter 1.PDF"));
+        assertEquals(Book.FORMAT_EPUB, Book.formatOf(null));
+        assertEquals(Book.FORMAT_PDF, new Book("c", "t", "manga.pdf", 1).getFormat());
+        Book b = new Book("c", "t", "novel.epub", 1);
+        b.setFormat("weird");
+        assertEquals(Book.FORMAT_EPUB, b.getFormat(), "unknown values fall back to EPUB");
+    }
+
+    @Test
     void plurals() {
         assertEquals("1 volume", TextUtils.plural(1, "volume", "volumes"));
         assertEquals("3 volumes", TextUtils.plural(3, "volume", "volumes"));

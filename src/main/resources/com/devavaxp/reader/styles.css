@@ -249,6 +249,14 @@
     -fx-alignment: center;
 }
 
+/* Pinned-collection mark (specific enough to keep its color on selected rows) */
+
+.list .list-cell .pin-mark,
+.list .list-cell:filled:selected .pin-mark {
+    -fx-font-size: 15px;
+    -fx-text-fill: -accent;
+}
+
 /* Status "pills" */
 
 .pill {
@@ -572,7 +580,7 @@
     -fx-font-weight: bold;
 }
 
-/* Reader settings popup */
+/* Segmented control (rows of mutually exclusive buttons) and reader settings popup */
 
 .settings {
     -fx-background-color: -surface;
@@ -593,7 +601,7 @@
     -fx-text-fill: -text-muted;
 }
 
-.settings .toggle-button {
+.segmented .toggle-button {
     -fx-background-color: -surface;
     -fx-border-color: -border;
     -fx-border-width: 1;
@@ -604,21 +612,21 @@
     -fx-border-radius: 0;
 }
 
-.settings .toggle-button.first {
+.segmented .toggle-button.first {
     -fx-background-radius: 8 0 0 8;
     -fx-border-radius: 8 0 0 8;
 }
 
-.settings .toggle-button.last {
+.segmented .toggle-button.last {
     -fx-background-radius: 0 8 8 0;
     -fx-border-radius: 0 8 8 0;
 }
 
-.settings .toggle-button:hover {
+.segmented .toggle-button:hover {
     -fx-background-color: -surface-hover;
 }
 
-.settings .toggle-button:selected {
+.segmented .toggle-button:selected {
     -fx-background-color: -accent;
     -fx-border-color: -accent;
     -fx-text-fill: white;

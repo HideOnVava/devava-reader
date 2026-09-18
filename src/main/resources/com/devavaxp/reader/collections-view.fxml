@@ -17,21 +17,28 @@
             styleClass="screen">
 
     <top>
-        <HBox styleClass="header" alignment="CENTER_LEFT" spacing="12">
+        <VBox spacing="12">
             <padding>
-                <Insets top="28" right="32" bottom="12" left="32"/>
+                <Insets top="28" right="32" bottom="4" left="32"/>
             </padding>
-            <VBox spacing="2" HBox.hgrow="ALWAYS">
-                <Label text="Library" styleClass="title"/>
-                <Label fx:id="summaryLabel" text="Your collections" styleClass="subtitle"/>
-            </VBox>
-        </HBox>
+            <HBox styleClass="header" alignment="CENTER_LEFT" spacing="12">
+                <VBox spacing="2" HBox.hgrow="ALWAYS">
+                    <Label text="Library" styleClass="title"/>
+                    <Label fx:id="summaryLabel" text="Your collections" styleClass="subtitle"/>
+                </VBox>
+            </HBox>
+
+            <!-- Search box and format filter -->
+            <HBox fx:id="filterBar" alignment="CENTER_LEFT" spacing="10">
+                <TextField fx:id="searchField" promptText="Search collections…" HBox.hgrow="ALWAYS"/>
+            </HBox>
+        </VBox>
     </top>
 
     <center>
         <VBox spacing="12">
             <padding>
-                <Insets top="4" right="32" bottom="4" left="32"/>
+                <Insets top="8" right="32" bottom="4" left="32"/>
             </padding>
 
             <!-- "Continue reading" card: only shown when a book is in progress -->
@@ -58,6 +65,17 @@
             <padding>
                 <Insets top="12" right="32" bottom="22" left="32"/>
             </padding>
+            <Button fx:id="moveUpButton" text="↑" styleClass="icon" onAction="#onMoveUp" focusTraversable="false">
+                <tooltip>
+                    <Tooltip text="Move up (Ctrl+↑). Available when no search or filter is active"/>
+                </tooltip>
+            </Button>
+            <Button fx:id="moveDownButton" text="↓" styleClass="icon" onAction="#onMoveDown" focusTraversable="false">
+                <tooltip>
+                    <Tooltip text="Move down (Ctrl+↓). Available when no search or filter is active"/>
+                </tooltip>
+            </Button>
+            <Region prefWidth="6"/>
             <TextField fx:id="newCollectionField" promptText="New collection name…" HBox.hgrow="ALWAYS"
                        onAction="#onCreateCollection"/>
             <Button text="Create collection" styleClass="primary" onAction="#onCreateCollection"/>
