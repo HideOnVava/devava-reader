@@ -37,9 +37,9 @@
                     <MenuItem text="Delete collection…" onAction="#onDeleteCollection"/>
                 </items>
             </MenuButton>
-            <Button text="＋  Add EPUB" styleClass="primary" onAction="#onAddEpub">
+            <Button text="＋  Add books" styleClass="primary" onAction="#onAddBooks">
                 <tooltip>
-                    <Tooltip text="You can also drag .epub files onto the list"/>
+                    <Tooltip text="EPUB and PDF. You can also drag files onto the list"/>
                 </tooltip>
             </Button>
         </HBox>
@@ -78,7 +78,7 @@
             <Button fx:id="readButton" text="Mark as read" onAction="#onToggleRead" focusTraversable="false"/>
             <Button fx:id="removeButton" text="Remove" onAction="#onRemove" focusTraversable="false">
                 <tooltip>
-                    <Tooltip text="Remove from the collection (Del). The .epub file is not deleted"/>
+                    <Tooltip text="Remove from the collection (Del). The file itself is not deleted"/>
                 </tooltip>
             </Button>
             <Region HBox.hgrow="ALWAYS"/>

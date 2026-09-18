@@ -23,6 +23,8 @@ class TextUtilsTest {
     void titleFromFileName() {
         assertEquals("[RVN] Mushoku Tensei - Volume 02 [SC]", TextUtils.titleFromFile(new File("C:/x/[RVN] Mushoku Tensei - Volume 02 [SC].EPUB")));
         assertEquals("no-extension", TextUtils.titleFromFile(new File("no-extension")));
+        assertEquals("One Piece v01", TextUtils.titleFromFile(new File("D:/manga/One Piece v01.pdf")));
+        assertEquals("Chapter 1.part", TextUtils.titleFromFile(new File("Chapter 1.part.PDF")));
     }
 
     @Test

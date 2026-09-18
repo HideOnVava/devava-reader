@@ -42,9 +42,9 @@ public final class TextUtils {
         return cmp != 0 ? cmp : Integer.compare(a.length(), b.length());
     }
 
-    /** Default title of a volume: the file name without the .epub extension. */
+    /** Default title of a volume: the file name without its .epub/.pdf extension. */
     public static String titleFromFile(File f) {
-        String name = f.getName().replaceAll("(?i)\\.epub$", "").trim();
+        String name = f.getName().replaceAll("(?i)\\.(epub|pdf)$", "").trim();
         return name.isEmpty() ? f.getName() : name;
     }
 

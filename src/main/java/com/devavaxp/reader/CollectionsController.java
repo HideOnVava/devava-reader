@@ -311,7 +311,7 @@ public class CollectionsController implements Navigator.Screen {
         int n = dataManager.countBooks(selected);
         String detail = n == 0 ? "The collection is empty."
                 : "Its " + TextUtils.plural(n, "volume", "volumes")
-                + " and their reading progress will be removed from the library. The .epub files are not deleted.";
+                + " and their reading progress will be removed from the library. The files themselves are not deleted.";
         boolean ok = Dialogs.confirm(navigator.getStage(), "Delete \"" + selected.getTitle() + "\"",
                 detail, "Delete", true);
         if (ok) {

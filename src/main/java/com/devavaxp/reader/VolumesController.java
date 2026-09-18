@@ -65,7 +65,7 @@ public class VolumesController implements Navigator.Screen {
         this.collection = collection;
 
         bookList.setCellFactory(list -> new BookCell());
-        bookList.setPlaceholder(new Label("No volumes yet. Add .epub files or drop them here."));
+        bookList.setPlaceholder(new Label("No volumes yet. Add .epub or .pdf files, or drop them here."));
         bookList.getSelectionModel().selectedItemProperty().addListener((obs, a, b) -> updateButtons());
         bookList.setOnMouseClicked(ev -> {
             if (ev.getButton() == MouseButton.PRIMARY && ev.getClickCount() == 2) openSelectedInReader();
@@ -152,7 +152,7 @@ public class VolumesController implements Navigator.Screen {
     }
 
     private void onDragOver(DragEvent ev) {
-        if (ev.getDragboard().hasFiles() && ev.getDragboard().getFiles().stream().anyMatch(VolumesController::isEpub)) {
+        if (ev.getDragboard().hasFiles() && ev.getDragboard().getFiles().stream().anyMatch(VolumesController::isSupportedBook)) {
             ev.acceptTransferModes(TransferMode.COPY);
         }
         ev.consume();
@@ -161,9 +161,9 @@ public class VolumesController implements Navigator.Screen {
     private void onDragDropped(DragEvent ev) {
         boolean ok = false;
         if (ev.getDragboard().hasFiles()) {
-            List<File> epubs = ev.getDragboard().getFiles().stream().filter(VolumesController::isEpub).toList();
-            if (!epubs.isEmpty()) {
-                importFiles(epubs);
+            List<File> dropped = ev.getDragboard().getFiles().stream().filter(VolumesController::isSupportedBook).toList();
+            if (!dropped.isEmpty()) {
+                importFiles(dropped);
                 ok = true;
             }
         }
@@ -171,8 +171,11 @@ public class VolumesController implements Navigator.Screen {
         ev.consume();
     }
 
-    private static boolean isEpub(File f) {
-        return f != null && f.isFile() && f.getName().toLowerCase(Locale.ROOT).endsWith(".epub");
+    /** Formats the app can open: EPUB (reflowable) and PDF (fixed pages). */
+    private static boolean isSupportedBook(File f) {
+        if (f == null || !f.isFile()) return false;
+        String name = f.getName().toLowerCase(Locale.ROOT);
+        return name.endsWith(".epub") || name.endsWith(".pdf");
     }
 
     // ------------------------------------------------------------------
@@ -180,10 +183,13 @@ public class VolumesController implements Navigator.Screen {
     // ------------------------------------------------------------------
 
     @FXML
-    private void onAddEpub() {
+    private void onAddBooks() {
         FileChooser chooser = new FileChooser();
-        chooser.setTitle("Select EPUB files");
-        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("EPUB books (*.epub)", "*.epub"));
+        chooser.setTitle("Select books");
+        chooser.getExtensionFilters().addAll(
+                new FileChooser.ExtensionFilter("Books (*.epub, *.pdf)", "*.epub", "*.pdf"),
+                new FileChooser.ExtensionFilter("EPUB (*.epub)", "*.epub"),
+                new FileChooser.ExtensionFilter("PDF (*.pdf)", "*.pdf"));
         Preferences prefs = dataManager.getPreferences();
         if (!prefs.getLastFolder().isEmpty()) {
             File folder = new File(prefs.getLastFolder());
@@ -203,7 +209,7 @@ public class VolumesController implements Navigator.Screen {
         int order = dataManager.nextOrder(collection.getId());
         int duplicates = 0;
         for (File f : sorted) {
-            if (!isEpub(f)) continue;
+            if (!isSupportedBook(f)) continue;
             if (dataManager.hasBookWithPath(collection.getId(), f.getAbsolutePath())) {
                 duplicates++;
                 continue;
@@ -291,11 +297,11 @@ public class VolumesController implements Navigator.Screen {
         if (selected == null) return;
         FileChooser chooser = new FileChooser();
         chooser.setTitle("Locate \"" + selected.getTitle() + "\"");
-        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("EPUB books (*.epub)", "*.epub"));
+        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Books (*.epub, *.pdf)", "*.epub", "*.pdf"));
         File current = selected.getFilePath() == null ? null : new File(selected.getFilePath()).getParentFile();
         if (current != null && current.isDirectory()) chooser.setInitialDirectory(current);
         File chosen = chooser.showOpenDialog(navigator.getStage());
-        if (chosen != null && isEpub(chosen)) {
+        if (chosen != null && isSupportedBook(chosen)) {
             selected.setFilePath(chosen.getAbsolutePath());
             dataManager.save();
             reload();
@@ -308,7 +314,7 @@ public class VolumesController implements Navigator.Screen {
         if (selected == null) return;
         int index = bookList.getSelectionModel().getSelectedIndex();
         boolean ok = Dialogs.confirm(navigator.getStage(), "Remove \"" + selected.getTitle() + "\"",
-                "It will be removed from the collection together with its reading progress. The .epub file is not deleted.",
+                "It will be removed from the collection together with its reading progress. The file itself is not deleted.",
                 "Remove", true);
         if (ok) {
             dataManager.deleteBook(selected);
@@ -355,7 +361,7 @@ public class VolumesController implements Navigator.Screen {
         int n = books.size();
         String detail = n == 0 ? "The collection is empty."
                 : "Its " + TextUtils.plural(n, "volume", "volumes")
-                + " and their reading progress will be removed from the library. The .epub files are not deleted.";
+                + " and their reading progress will be removed from the library. The files themselves are not deleted.";
         boolean ok = Dialogs.confirm(navigator.getStage(), "Delete \"" + collection.getTitle() + "\"", detail,
                 "Delete", true);
         if (ok) {
@@ -379,10 +385,12 @@ public class VolumesController implements Navigator.Screen {
         private final Label detail = new Label();
         private final ProgressBar bar = new ProgressBar(0);
         private final Label pill = new Label();
+        private final Label format = new Label("PDF");
         private final HBox row;
 
         BookCell() {
             order.getStyleClass().add("row-order");
+            format.getStyleClass().addAll("pill", "format");
             title.getStyleClass().add("row-title");
             detail.getStyleClass().add("row-detail");
             pill.getStyleClass().add("pill");
@@ -393,7 +401,7 @@ public class VolumesController implements Navigator.Screen {
             progress.setAlignment(Pos.CENTER_LEFT);
             VBox texts = new VBox(5, title, progress);
             HBox.setHgrow(texts, Priority.ALWAYS);
-            row = new HBox(12, order, texts, pill);
+            row = new HBox(12, order, texts, format, pill);
             row.setAlignment(Pos.CENTER_LEFT);
         }
 
@@ -407,6 +415,9 @@ public class VolumesController implements Navigator.Screen {
             }
             order.setText(String.format(Locale.ROOT, "%02d", book.getOrder()));
             title.setText(book.getTitle());
+            boolean pdf = Book.FORMAT_PDF.equals(book.getFormat());
+            format.setVisible(pdf);
+            format.setManaged(pdf);
             double p = book.isRead() ? 100.0 : book.getReadingPercentage();
             bar.setProgress(p / 100.0);
             bar.getStyleClass().remove("complete");

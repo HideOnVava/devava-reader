@@ -6,9 +6,9 @@
 
     <groupId>com.devavaxp</groupId>
     <artifactId>devava-reader</artifactId>
-    <version>1.0.0</version>
+    <version>1.1.0</version>
     <name>Devava Reader</name>
-    <description>A minimal desktop EPUB reader for book collections, by devava XP Studios.</description>
+    <description>A minimal desktop reader for EPUB books and PDF manga collections, by devava XP Studios.</description>
 
     <organization>
         <name>devava XP Studios</name>
@@ -26,6 +26,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.release>21</maven.compiler.release>
         <javafx.version>21.0.6</javafx.version>
+        <pdfbox.version>3.0.7</pdfbox.version>
         <junit.version>5.12.1</junit.version>
     </properties>
 
@@ -51,6 +52,13 @@
             <groupId>com.google.code.gson</groupId>
             <artifactId>gson</artifactId>
             <version>2.10.1</version>
+        </dependency>
+
+        <!-- PDF page rendering (fixed-page reader for comics/manga) -->
+        <dependency>
+            <groupId>org.apache.pdfbox</groupId>
+            <artifactId>pdfbox</artifactId>
+            <version>${pdfbox.version}</version>
         </dependency>
 
         <dependency>
