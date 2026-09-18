@@ -172,6 +172,8 @@ public class ReaderController implements Navigator.Screen, JsBridge.Listener {
         hintLabel.setText("");
         webView.setOpacity(0);
         loadingLabel.setVisible(true);
+        fullScreenButton.setText("");
+        fullScreenButton.setGraphic(UiControls.fullScreenIcon());
 
         applyUiTheme();
         setupWebEngine();

@@ -3,8 +3,9 @@ package com.devavaxp.reader;
 import com.devavaxp.reader.data.DataManager;
 import com.devavaxp.reader.epub.EpubExtractor;
 import com.devavaxp.reader.model.Preferences;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
 import javafx.application.Application;
-import javafx.application.Platform;
 import javafx.scene.Scene;
 import javafx.scene.image.Image;
 import javafx.scene.image.PixelWriter;
@@ -12,6 +13,7 @@ import javafx.scene.image.WritableImage;
 import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
+import javafx.util.Duration;
 
 /**
  * JavaFX entry point of Devava Reader. Creates the window, the single scene and the
@@ -53,24 +55,30 @@ public class ReaderApp extends Application {
         stage.setMinWidth(720);
         stage.setMinHeight(480);
         if (!stage.isMaximized()) {
-            Platform.runLater(() -> restoreSize(stage, prefs.getWindowWidth(), prefs.getWindowHeight()));
+            restoreSizeOnceMapped(stage, prefs.getWindowWidth(), prefs.getWindowHeight());
         }
     }
 
     /**
      * Some window managers (seen with GTK on X11) map the window at a size other than the one
-     * the scene asked for. Once the window is mapped a resize request is honoured, so re-apply
-     * the saved size — keeping whatever the decorations add — when it was not respected.
+     * the scene asked for, and the mismatch only becomes visible once their configure event
+     * arrives. Once the window is mapped a resize request is honoured, so the saved size is
+     * checked a few times during the first seconds and re-applied — keeping whatever the
+     * decorations add — if it was not respected. On Windows and macOS this never triggers.
      */
-    private static void restoreSize(Stage stage, double sceneWidth, double sceneHeight) {
-        Scene scene = stage.getScene();
-        if (scene == null || stage.isMaximized() || stage.isFullScreen()) return;
-        double decorationWidth = Math.max(0, stage.getWidth() - scene.getWidth());
-        double decorationHeight = Math.max(0, stage.getHeight() - scene.getHeight());
-        if (Math.abs(scene.getWidth() - sceneWidth) > 2 || Math.abs(scene.getHeight() - sceneHeight) > 2) {
-            stage.setWidth(sceneWidth + decorationWidth);
-            stage.setHeight(sceneHeight + decorationHeight);
+    private static void restoreSizeOnceMapped(Stage stage, double sceneWidth, double sceneHeight) {
+        Timeline checks = new Timeline();
+        for (int ms : new int[]{300, 900, 1800}) {
+            checks.getKeyFrames().add(new KeyFrame(Duration.millis(ms), e -> {
+                Scene scene = stage.getScene();
+                if (scene == null || stage.isMaximized() || stage.isFullScreen()) return;
+                if (Math.abs(scene.getWidth() - sceneWidth) > 2 || Math.abs(scene.getHeight() - sceneHeight) > 2) {
+                    stage.setWidth(sceneWidth + Math.max(0, stage.getWidth() - scene.getWidth()));
+                    stage.setHeight(sceneHeight + Math.max(0, stage.getHeight() - scene.getHeight()));
+                }
+            }));
         }
+        checks.play();
     }
 
     private void close(Stage stage) {

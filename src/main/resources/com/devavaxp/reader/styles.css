@@ -492,6 +492,17 @@
     -fx-text-fill: -reader-text;
 }
 
+/* Vector icons inside buttons (see UiControls.fullScreenIcon) */
+.button .icon-shape {
+    -fx-fill: transparent;
+    -fx-stroke: -text;
+    -fx-stroke-width: 1.6;
+}
+
+.reader-bar .button .icon-shape {
+    -fx-stroke: -reader-text;
+}
+
 .reader-bar .button.flat:hover {
     -fx-background-color: -reader-hover;
 }

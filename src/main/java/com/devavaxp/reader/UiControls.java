@@ -1,11 +1,14 @@
 package com.devavaxp.reader;
 
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.control.Toggle;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.ToggleGroup;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
+import javafx.scene.shape.SVGPath;
+import javafx.scene.shape.StrokeLineCap;
 
 import java.util.function.Consumer;
 
@@ -15,6 +18,18 @@ import java.util.function.Consumer;
 final class UiControls {
 
     private UiControls() {
+    }
+
+    /**
+     * "Full screen" icon (four corners) drawn as a path, because the text symbol for it is
+     * missing from the fonts of many Linux desktops. Colours come from the .icon-shape style.
+     */
+    static Node fullScreenIcon() {
+        SVGPath path = new SVGPath();
+        path.setContent("M0 4.5 V0 H4.5 M8.5 0 H13 V4.5 M13 8.5 V13 H8.5 M4.5 13 H0 V8.5");
+        path.setStrokeLineCap(StrokeLineCap.ROUND);
+        path.getStyleClass().add("icon-shape");
+        return path;
     }
 
     /**
