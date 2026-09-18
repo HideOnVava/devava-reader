@@ -39,7 +39,9 @@ click() {
     local pos wx wy
     # Put the window at the top-left first: after a maximized reader is restored it may sit
     # lower and its bottom buttons would fall off the small screen.
-    pos="$(se -e 'set frontmost to true' -e 'set position of window 1 to {12, 30}' -e 'get position of window 1')"
+    se -e 'set frontmost to true' -e 'set position of window 1 to {12, 30}' >/dev/null
+    sleep 1
+    pos="$(se -e 'get position of window 1')"
     wx="${pos%%,*}"; wy="${pos##*, }"; wy="${wy//[[:space:]]/}"
     se -e "click at {$((wx + $1)), $((wy + 28 + $2))}" >/dev/null
     sleep "${3:-1}"

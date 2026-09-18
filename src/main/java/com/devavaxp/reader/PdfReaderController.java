@@ -138,6 +138,8 @@ public class PdfReaderController implements Navigator.Screen {
             v.setSmooth(true);
         }
 
+        fullScreenButton.setText("");
+        fullScreenButton.setGraphic(UiControls.fullScreenIcon());
         applyUiTheme();
         setupInput();
         setupToc();

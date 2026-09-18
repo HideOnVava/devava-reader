@@ -48,7 +48,14 @@ fi
 # test keeps working if JavaFX ever re-creates it (for example when leaving a maximized reader).
 win()   { xdotool search --onlyvisible --name '^Devava Reader$' | head -1; }
 shot()  { import -window root "$out/$1.png"; echo "screenshot: $1 ($(xdotool getwindowgeometry "$(win)" | sed -n 's/.*Geometry: //p'))"; }
-click() { local w; w="$(win)"; xdotool windowactivate --sync "$w" mousemove --window "$w" "$1" "$2" click 1; sleep "${3:-1}"; }
+# openbox does not always restore the pre-maximize size when a reader is left, so the
+# window is normalized to 1000x680 before clicking on the screens laid out for that size.
+click() {
+    local w g; w="$(win)"
+    g="$(xdotool getwindowgeometry "$w" | sed -n 's/.*Geometry: //p')"
+    if [[ "$g" != "1000x680" ]]; then xdotool windowsize "$w" 1000 680; sleep 1; fi
+    xdotool windowactivate --sync "$w" mousemove --window "$w" "$1" "$2" click 1; sleep "${3:-1}"
+}
 key()   { xdotool windowactivate --sync "$(win)" key --delay 120 "$@"; sleep 1; }
 
 # Coordinates are relative to the 1000x680 client area of the window (see docs/screenshots).
