@@ -3,7 +3,9 @@
    ===================================================================== */
 
 .root {
-    -fx-font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    /* "System" is the platform UI font: Segoe UI on Windows, San Francisco on macOS and
+       the desktop's sans-serif on Linux (JavaFX only honours one family here). */
+    -fx-font-family: "System";
     -fx-font-size: 13px;
     -fx-background-color: -bg;
 

@@ -1,5 +1,5 @@
-* text=auto
-mvnw text eol=lf
-*.cmd text eol=crlf
-*.ico binary
-*.jar binary
+# Shell scripts must keep LF line endings even when checked out on Windows.
+*.sh text eol=lf
+*.ps1 text
+*.java text
+*.md text

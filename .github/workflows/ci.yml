@@ -1,4 +1,5 @@
-# Compiles the project and runs the unit tests on every push and pull request.
+# Compiles the project and runs the unit tests on every push and pull request, on the three
+# systems the application is released for.
 name: CI
 
 on:
@@ -11,8 +12,12 @@ on:
 
 jobs:
   test:
-    name: Build and test (Windows)
-    runs-on: windows-latest
+    name: Build and test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
     steps:
       - uses: actions/checkout@v7
 
@@ -24,4 +29,5 @@ jobs:
           cache: maven
 
       - name: Build and run the tests
-        run: .\mvnw.cmd -B verify
+        shell: bash
+        run: if [ "$RUNNER_OS" = Windows ]; then ./mvnw.cmd -B verify; else ./mvnw -B verify; fi

@@ -1,0 +1,14 @@
+# JDK modules linked into the bundled runtime (one per line; "#" starts a comment).
+# JavaFX modules are added by the build scripts and pull in their own dependencies.
+java.base
+java.desktop
+java.logging
+java.xml
+java.net.http
+java.scripting
+java.sql
+jdk.jsobject
+jdk.unsupported
+jdk.xml.dom
+jdk.charsets
+jdk.crypto.ec

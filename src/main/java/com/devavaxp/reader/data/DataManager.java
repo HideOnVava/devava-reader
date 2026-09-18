@@ -29,8 +29,9 @@ import java.util.Set;
  * Persists the whole library (collections, books and preferences) in a single JSON file.
  * <p>
  * By default the file lives in {@code <Documents>/Devava Reader/library.json}, where
- * {@code <Documents>} is the user's real Documents folder (OneDrive redirection is honored).
- * The location can be overridden with the system property {@code -Dreader.library=path}.
+ * {@code <Documents>} is the user's real Documents folder (see {@link AppDirectories} for
+ * each operating system). The location can be overridden with the system property
+ * {@code -Dreader.library=path}.
  * <p>
  * Writes are atomic (a temporary file is written and then renamed), so an unexpected
  * shutdown never leaves the library half-written. The first time the application runs,
@@ -40,7 +41,7 @@ import java.util.Set;
  */
 public class DataManager {
 
-    public static final String LIBRARY_FOLDER = "Devava Reader";
+    public static final String LIBRARY_FOLDER = AppDirectories.LIBRARY_FOLDER;
     public static final String LIBRARY_FILE = "library.json";
     private static final String PATH_PROPERTY = "reader.library";
 
@@ -89,33 +90,15 @@ public class DataManager {
         if (configured != null && !configured.isBlank()) {
             return Paths.get(configured);
         }
-        return documentsFolder().resolve(LIBRARY_FOLDER).resolve(LIBRARY_FILE);
-    }
-
-    /**
-     * The user's Documents folder. On Windows this asks the shell for the real "Personal"
-     * folder, which may be redirected (for example to OneDrive); elsewhere it falls back to
-     * {@code ~/Documents} when it exists, and finally to the home directory.
-     */
-    public static Path documentsFolder() {
-        Path home = Paths.get(System.getProperty("user.home"));
-        try {
-            java.io.File dir = javax.swing.filechooser.FileSystemView.getFileSystemView().getDefaultDirectory();
-            if (dir != null && dir.isDirectory()) {
-                return dir.toPath().toAbsolutePath().normalize();
-            }
-        } catch (RuntimeException | LinkageError ignored) {
-            // Headless or unsupported platform: use the fallbacks below.
-        }
-        Path documents = home.resolve("Documents");
-        return Files.isDirectory(documents) ? documents : home;
+        return AppDirectories.libraryFolder().resolve(LIBRARY_FILE);
     }
 
     /** Library files written by earlier versions, in order of preference. */
     static List<Path> legacyCandidates() {
         Path home = Paths.get(System.getProperty("user.home"));
         Set<Path> candidates = new LinkedHashSet<>();
-        candidates.add(documentsFolder().resolve("MiLector").resolve("biblioteca.json"));
+        Path documents = AppDirectories.documentsFolder();
+        if (documents != null) candidates.add(documents.resolve("MiLector").resolve("biblioteca.json"));
         candidates.add(home.resolve("OneDrive").resolve("Documentos").resolve("MiLector").resolve("biblioteca.json"));
         candidates.add(home.resolve("OneDrive").resolve("Documents").resolve("MiLector").resolve("biblioteca.json"));
         candidates.add(home.resolve("Documents").resolve("MiLector").resolve("biblioteca.json"));

@@ -67,12 +67,12 @@
             </padding>
             <Button fx:id="moveUpButton" text="↑" styleClass="icon" onAction="#onMoveUp" focusTraversable="false">
                 <tooltip>
-                    <Tooltip text="Move up (Ctrl+↑). Available when no search or filter is active"/>
+                    <Tooltip text="Move up. Available when no search or filter is active"/>
                 </tooltip>
             </Button>
             <Button fx:id="moveDownButton" text="↓" styleClass="icon" onAction="#onMoveDown" focusTraversable="false">
                 <tooltip>
-                    <Tooltip text="Move down (Ctrl+↓). Available when no search or filter is active"/>
+                    <Tooltip text="Move down. Available when no search or filter is active"/>
                 </tooltip>
             </Button>
             <Region prefWidth="6"/>

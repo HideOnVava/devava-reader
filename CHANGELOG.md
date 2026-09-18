@@ -5,6 +5,27 @@ All notable changes to Devava Reader are documented here. The format follows
 [Semantic Versioning](https://semver.org/). Each release on GitHub takes its notes from
 the matching section of this file.
 
+## [1.2.0] - 2026-09-18
+
+Linux and macOS join Windows.
+
+### Added
+- **Linux** builds: `.deb` (Ubuntu, Debian, Mint…), `.rpm` (Fedora, openSUSE…) and a portable
+  `.tar.gz`. Packages add *Devava Reader* to the applications menu.
+- **macOS** builds: `.dmg` for Apple Silicon and for Intel Macs. The app is not notarized, so
+  the first launch needs *Privacy & Security → Open Anyway* (see the release notes).
+- On macOS the shortcuts use `⌘` instead of `Ctrl`; tooltips and hints say so.
+- Every release is smoke-tested on the three systems by GitHub Actions with real input
+  events; the screenshots are kept with the build.
+
+### Changed
+- The library file lives in the Documents folder of each system: `Documents\Devava Reader`
+  on Windows (OneDrive-aware), `~/Documents/Devava Reader` on macOS and the XDG Documents
+  folder on Linux (`~/.local/share/devava-reader` when there is none).
+- The interface uses the platform's own UI font (Segoe UI, San Francisco, or the desktop's
+  sans-serif) and the reader's font stacks include common Linux fonts.
+- File dialogs also match upper-case `.EPUB` / `.PDF` extensions on case-sensitive systems.
+
 ## [1.1.0] - 2026-09-17
 
 First public release.
@@ -39,5 +60,6 @@ Initial version, not published as a release.
 - Library stored in a single JSON file under `Documents\Devava Reader`, created
   automatically; the previous Spanish library file is imported on first launch.
 
+[1.2.0]: https://github.com/HideOnVava/devava-reader/releases/tag/v1.2.0
 [1.1.0]: https://github.com/HideOnVava/devava-reader/releases/tag/v1.1.0
 [1.0.0]: https://github.com/HideOnVava/devava-reader/commit/bfcfb71

@@ -1,8 +1,11 @@
-# Builds the Windows installer and portable ZIP and publishes them as a GitHub release.
+# Builds Devava Reader for Windows, Linux and macOS, smoke-tests each build with real input on
+# a real desktop session (screenshots are kept as artifacts), and publishes everything as a
+# GitHub release.
 #
 # Triggered by pushing a version tag such as v1.2.0 (it must match the version in pom.xml
-# and have a section in CHANGELOG.md). Running it by hand from the Actions tab is a dry
-# run: everything is built and kept as a workflow artifact, but no release is created.
+# and have a section in CHANGELOG.md). Running it by hand from the Actions tab is a dry run:
+# everything is built and tested and the files are kept as workflow artifacts, but no release
+# is created.
 name: Release
 
 on:
@@ -14,9 +17,20 @@ permissions:
   contents: write
 
 jobs:
-  release:
-    name: Build and publish (Windows)
-    runs-on: windows-latest
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: "Windows x64",         os: windows-latest,  id: windows-x64 }
+          # Ubuntu 22.04 on purpose: the .deb declares its dependencies with the package names
+          # of the build machine, and 22.04 names are satisfied by newer releases too.
+          - { name: "Linux x64",           os: ubuntu-22.04,    id: linux-x64 }
+          - { name: "macOS Apple Silicon", os: macos-15,        id: macos-arm64 }
+          - { name: "macOS Intel",         os: macos-15-intel,  id: macos-x64 }
     steps:
       - uses: actions/checkout@v7
 
@@ -29,24 +43,94 @@ jobs:
 
       - name: Check that the tag matches the version in pom.xml
         if: github.ref_type == 'tag'
+        shell: bash
         run: |
-          $version = ([xml](Get-Content pom.xml)).project.version
-          if ("v$version" -ne "${{ github.ref_name }}") {
-            throw "Tag ${{ github.ref_name }} does not match the pom.xml version $version."
-          }
+          version=$(sed -n 's/^    <version>\(.*\)<\/version>$/\1/p' pom.xml | head -1)
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match the pom.xml version $version."; exit 1
+          fi
 
       - name: Run the tests
-        run: .\mvnw.cmd -B verify
+        shell: bash
+        run: if [ "$RUNNER_OS" = Windows ]; then ./mvnw.cmd -B verify; else ./mvnw -B verify; fi
 
-      - name: Build the release files (installer, portable ZIP, checksums, notes)
+      - name: Linux tools (rpm for the .rpm package, a virtual desktop for the smoke test)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y rpm xvfb openbox xdotool imagemagick
+
+      - name: Build the release files
+        if: runner.os == 'Windows'
         run: .\packaging\release.ps1
 
-      - name: Show what was built
-        run: |
-          Get-ChildItem dist\release
-          Get-Content dist\release\SHA256SUMS.txt
+      - name: Build the release files
+        if: runner.os != 'Windows'
+        run: bash packaging/release.sh
 
-      - name: Keep the files as a workflow artifact (dry run)
+      - name: Show what was built
+        shell: bash
+        run: ls -l dist/release && cat dist/release/SHA256SUMS.txt
+
+      - name: Generate the sample library for the smoke test
+        shell: bash
+        run: |
+          cp="$(ls target/dependency/pdfbox-*.jar target/dependency/pdfbox-io-*.jar target/dependency/fontbox-*.jar target/dependency/commons-logging-*.jar | tr '\n' "$( [ "$RUNNER_OS" = Windows ] && echo ';' || echo ':')")"
+          javac -cp "$cp" -d target/smoke/classes tools/samples/*.java
+          java -cp "target/smoke/classes$( [ "$RUNNER_OS" = Windows ] && echo ';' || echo ':')$cp" SampleLibrary target/smoke/samples
+
+      - name: Smoke test (Windows)
+        if: runner.os == 'Windows'
+        run: .\tools\smoke\smoke-windows.ps1 -Setup (Get-Item dist\release\*-setup.exe).FullName -Samples target\smoke\samples -Out target\smoke\out
+
+      - name: Smoke test (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get install -y ./dist/release/*.deb
+          bash tools/smoke/smoke-linux.sh "/opt/devava-reader/bin/Devava Reader" target/smoke/samples target/smoke/out
+
+      - name: Smoke test (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          hdiutil attach -nobrowse -readonly -mountpoint "$RUNNER_TEMP/dmg" dist/release/*.dmg
+          cp -R "$RUNNER_TEMP/dmg/Devava Reader.app" "$RUNNER_TEMP/Devava Reader.app"
+          hdiutil detach "$RUNNER_TEMP/dmg"
+          bash tools/smoke/smoke-macos.sh "$RUNNER_TEMP/Devava Reader.app" target/smoke/samples target/smoke/out
+
+      - name: Keep the smoke test screenshots and log
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: smoke-${{ matrix.id }}
+          path: target/smoke/out
+          if-no-files-found: ignore
+
+      - name: Keep the release files
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-${{ matrix.id }}
+          path: dist/release/Devava-Reader-*
+
+  publish:
+    name: Publish
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Collect the files of every platform
+        uses: actions/download-artifact@v8
+        with:
+          pattern: release-*
+          path: dist/release
+
+      - name: Checksums and release notes
+        shell: pwsh
+        run: |
+          ./packaging/release-notes.ps1 -Dir dist/release
+          Get-Content dist/release/SHA256SUMS.txt
+
+      - name: Keep everything as one artifact (dry run)
         if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v7
         with:
@@ -57,12 +141,10 @@ jobs:
         if: github.ref_type == 'tag'
         env:
           GH_TOKEN: ${{ github.token }}
+        shell: bash
         run: |
-          $tag = "${{ github.ref_name }}"
-          $files = Get-ChildItem dist\release -File |
-            Where-Object { $_.Name -ne "RELEASE_NOTES.md" } |
-            ForEach-Object { $_.FullName }
-          gh release create $tag $files `
-            --title "Devava Reader $($tag.Substring(1))" `
-            --notes-file dist\release\RELEASE_NOTES.md `
+          files=$(find dist/release -type f -name 'Devava-Reader-*' | sort)
+          gh release create "$GITHUB_REF_NAME" $files dist/release/SHA256SUMS.txt \
+            --title "Devava Reader ${GITHUB_REF_NAME#v}" \
+            --notes-file dist/release/RELEASE_NOTES.md \
             --verify-tag

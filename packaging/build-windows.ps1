@@ -45,11 +45,10 @@ $appVersion = ([xml](Get-Content (Join-Path $projectDir "pom.xml"))).project.ver
 # instead of sitting next to it. Never change it.
 $upgradeUuid = "7d3a9d0e-5c1b-4a9e-9f2c-3b6d1e8f4a21"
 
-# JDK modules the application needs at run time (JavaFX pulls in the rest transitively).
-$jdkModules = @(
-    "java.base", "java.desktop", "java.logging", "java.xml", "java.net.http", "java.scripting",
-    "java.sql", "jdk.jsobject", "jdk.unsupported", "jdk.xml.dom", "jdk.charsets", "jdk.crypto.ec"
-)
+# JDK modules the application needs at run time: packaging/jdk-modules.txt (shared with
+# build-unix.sh). JavaFX pulls in the rest transitively.
+$jdkModules = @(Get-Content (Join-Path $PSScriptRoot "jdk-modules.txt") |
+    ForEach-Object { $_.Trim() } | Where-Object { $_ -and -not $_.StartsWith("#") })
 $javafxModules = @("javafx.base", "javafx.graphics", "javafx.controls", "javafx.fxml", "javafx.web", "javafx.media")
 
 $work = Join-Path $projectDir "target\package"

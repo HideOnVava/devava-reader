@@ -1,5 +1,6 @@
 package com.devavaxp.reader;
 
+import com.devavaxp.reader.data.AppDirectories;
 import com.devavaxp.reader.data.DataManager;
 import com.devavaxp.reader.data.TextUtils;
 import com.devavaxp.reader.model.Book;
@@ -17,6 +18,7 @@ import javafx.scene.control.ListView;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.ProgressBar;
 import javafx.scene.control.SeparatorMenuItem;
+import javafx.scene.control.Tooltip;
 import javafx.scene.input.DragEvent;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
@@ -72,6 +74,9 @@ public class VolumesController implements Navigator.Screen {
         });
         bookList.setOnKeyPressed(this::onListKey);
         bookList.setContextMenu(createContextMenu());
+        String mod = AppDirectories.shortcutKey();
+        moveUpButton.setTooltip(new Tooltip("Move up (" + mod + "+↑)"));
+        moveDownButton.setTooltip(new Tooltip("Move down (" + mod + "+↓)"));
         bookList.setOnDragOver(this::onDragOver);
         bookList.setOnDragDropped(this::onDragDropped);
 
@@ -145,8 +150,8 @@ public class VolumesController implements Navigator.Screen {
             case ENTER -> { openSelectedInReader(); ev.consume(); }
             case DELETE -> { onRemove(); ev.consume(); }
             case F2 -> { onRename(); ev.consume(); }
-            case UP -> { if (ev.isControlDown()) { onMoveUp(); ev.consume(); } }
-            case DOWN -> { if (ev.isControlDown()) { onMoveDown(); ev.consume(); } }
+            case UP -> { if (ev.isShortcutDown()) { onMoveUp(); ev.consume(); } }
+            case DOWN -> { if (ev.isShortcutDown()) { onMoveDown(); ev.consume(); } }
             default -> { }
         }
     }
@@ -187,9 +192,9 @@ public class VolumesController implements Navigator.Screen {
         FileChooser chooser = new FileChooser();
         chooser.setTitle("Select books");
         chooser.getExtensionFilters().addAll(
-                new FileChooser.ExtensionFilter("Books (*.epub, *.pdf)", "*.epub", "*.pdf"),
-                new FileChooser.ExtensionFilter("EPUB (*.epub)", "*.epub"),
-                new FileChooser.ExtensionFilter("PDF (*.pdf)", "*.pdf"));
+                new FileChooser.ExtensionFilter("Books (*.epub, *.pdf)", "*.epub", "*.pdf", "*.EPUB", "*.PDF"),
+                new FileChooser.ExtensionFilter("EPUB (*.epub)", "*.epub", "*.EPUB"),
+                new FileChooser.ExtensionFilter("PDF (*.pdf)", "*.pdf", "*.PDF"));
         Preferences prefs = dataManager.getPreferences();
         if (!prefs.getLastFolder().isEmpty()) {
             File folder = new File(prefs.getLastFolder());
@@ -297,7 +302,7 @@ public class VolumesController implements Navigator.Screen {
         if (selected == null) return;
         FileChooser chooser = new FileChooser();
         chooser.setTitle("Locate \"" + selected.getTitle() + "\"");
-        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Books (*.epub, *.pdf)", "*.epub", "*.pdf"));
+        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Books (*.epub, *.pdf)", "*.epub", "*.pdf", "*.EPUB", "*.PDF"));
         File current = selected.getFilePath() == null ? null : new File(selected.getFilePath()).getParentFile();
         if (current != null && current.isDirectory()) chooser.setInitialDirectory(current);
         File chosen = chooser.showOpenDialog(navigator.getStage());

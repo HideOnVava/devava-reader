@@ -6,7 +6,7 @@
 
     <groupId>com.devavaxp</groupId>
     <artifactId>devava-reader</artifactId>
-    <version>1.1.0</version>
+    <version>1.2.0</version>
     <name>Devava Reader</name>
     <description>A minimal desktop reader for EPUB books and PDF manga collections, by devava XP Studios.</description>
 
