@@ -58,7 +58,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y rpm xvfb openbox xdotool wmctrl imagemagick
+          sudo apt-get install -y rpm xvfb openbox xdotool wmctrl x11-utils imagemagick
 
       - name: Build the release files
         if: runner.os == 'Windows'
