@@ -48,36 +48,30 @@ fi
 # test keeps working if JavaFX ever re-creates it (for example when leaving a maximized reader).
 win()   { xdotool search --onlyvisible --name '^Devava Reader$' | head -1; }
 shot()  { import -window root "$out/$1.png"; echo "screenshot: $1 ($(xdotool getwindowgeometry "$(win)" | sed -n 's/.*Geometry: //p'))"; }
-# openbox does not always restore the pre-maximize size when a reader is left, so the
-# window is normalized to 1000x680 before clicking on the screens laid out for that size.
-click() {
-    local w g; w="$(win)"
-    g="$(xdotool getwindowgeometry "$w" | sed -n 's/.*Geometry: //p')"
-    if [[ "$g" != "1000x680" ]]; then xdotool windowsize "$w" 1000 680; sleep 1; fi
-    xdotool windowactivate --sync "$w" mousemove --window "$w" "$1" "$2" click 1; sleep "${3:-1}"
-}
-key()   { xdotool windowactivate --sync "$(win)" key --delay 120 "$@"; sleep 1; }
+key()   { xdotool windowactivate --sync "$(win)" key --delay 120 "$@"; sleep "${WAIT:-1}"; }
 
-# Coordinates are relative to the 1000x680 client area of the window (see docs/screenshots).
+# The whole flow is driven with the keyboard, so it does not depend on window size or position:
+# the library focuses its list with the first collection selected, Enter opens a collection,
+# a collection focuses its list with the first volume selected, Enter opens the reader and
+# Escape goes back one screen.
 shot 01-library
-click 920 178 8                 # "Read" on the Continue reading card -> EPUB reader (Vol. 2)
-shot 02-reader-epub
+key Return                      # open "The Lantern Road"
+shot 02-collection-novel
+key Down; WAIT=8 key Return     # Vol. 2 -> EPUB reader
+shot 03-reader-epub
 key Right; key Right
-shot 03-reader-epub-next-pages
-key t; sleep 1                  # contents panel
-shot 04-reader-epub-contents
-key Escape; key Escape; sleep 2 # close contents, back to the collection
-shot 05-collection-novel
-click 37 45 2                   # back to the library
-click 299 328 1                 # select "Sample Manga"
-click 928 640 2                 # Open
+shot 04-reader-epub-next-pages
+key t                           # contents panel
+shot 05-reader-epub-contents
+key Escape; WAIT=2 key Escape   # close contents, back to the collection
+key Escape                      # back to the library
+key Down; key Return            # "Sample Manga"
 shot 06-collection-manga
-click 299 120 1                 # select Vol. 1
-click 928 640 8                 # Read -> PDF reader
+WAIT=8 key Return               # Vol. 1 -> PDF reader
 shot 07-reader-pdf
 key Left; key Left              # right-to-left: Left goes forward
 shot 08-reader-pdf-next-spread
-key Escape; sleep 2
+WAIT=2 key Escape
 
 # Close the window the way a user would (WM close request); the app must exit cleanly.
 wmctrl -i -c "$(win)"

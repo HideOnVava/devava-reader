@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 #
 # Smoke test of the macOS build: runs the app bundle with the sample library, takes screen
-# captures, drives it through the readers with System Events (mouse clicks and key codes,
-# which need the Accessibility permission — GitHub's macOS runners grant it), and quits it.
+# captures, drives it through the readers with System Events key codes (which need the
+# Accessibility permission; GitHub's macOS runners grant it), and quits it.
 # Fails if the app crashes, logs an exception, or does not save the reading progress.
 #
 # Usage: tools/smoke/smoke-macos.sh <app-bundle> <sample-folder> <output-folder>
@@ -33,47 +33,35 @@ sleep 6
 
 se() { osascript -e 'tell application "System Events" to tell process "Devava Reader"' "$@" -e 'end tell'; }
 shot() { screencapture -x "$out/$1.png"; echo "screenshot: $1"; }
-# Coordinates are relative to the 1000x680 content area; the window position is read before
-# every click because the readers maximize the window and restore it afterwards.
-click() {
-    local pos wx wy
-    # Put the window at the top-left first: after a maximized reader is restored it may sit
-    # lower and its bottom buttons would fall off the small screen.
-    se -e 'set frontmost to true' -e 'set position of window 1 to {12, 30}' >/dev/null
-    sleep 1
-    pos="$(se -e 'get position of window 1')"
-    wx="${pos%%,*}"; wy="${pos##*, }"; wy="${wy//[[:space:]]/}"
-    se -e "click at {$((wx + $1)), $((wy + 28 + $2))}" >/dev/null
-    sleep "${3:-1}"
-}
-key() { se -e 'set frontmost to true' -e "key code $1" >/dev/null; sleep 1; }
+key() { se -e 'set frontmost to true' -e "key code $1" >/dev/null; sleep "${WAIT:-1}"; }
 
 automation=true
-if ! se -e 'get position of window 1' >/dev/null 2>&1; then
+if ! se -e 'set frontmost to true' >/dev/null 2>&1; then
     automation=false
     echo "UI automation is not available in this session (Accessibility); only the launch is checked."
 fi
 
+# The whole flow is driven with the keyboard, so it does not depend on window size or position
+# (see smoke-linux.sh). Key codes: Return 36, Down 125, Escape 53, Right 124, Left 123, t 17.
 shot 01-library
 if $automation; then
-    click 920 178 8                 # "Read" on the Continue reading card -> EPUB reader (Vol. 2)
-    shot 02-reader-epub
-    key 124; key 124                # Right arrow x2
-    shot 03-reader-epub-next-pages
-    key 17; sleep 1                 # T: contents panel
-    shot 04-reader-epub-contents
-    key 53; key 53; sleep 2         # Escape x2: close contents, back to the collection
-    shot 05-collection-novel
-    click 37 45 2                   # back to the library
-    click 299 328 1                 # select "Sample Manga"
-    click 928 640 2                 # Open
+    key 36                          # open "The Lantern Road"
+    shot 02-collection-novel
+    key 125; WAIT=8 key 36          # Vol. 2 -> EPUB reader
+    shot 03-reader-epub
+    key 124; key 124
+    shot 04-reader-epub-next-pages
+    key 17                          # contents panel
+    shot 05-reader-epub-contents
+    key 53; WAIT=2 key 53           # close contents, back to the collection
+    key 53                          # back to the library
+    key 125; key 36                 # "Sample Manga"
     shot 06-collection-manga
-    click 299 120 1                 # select Vol. 1
-    click 928 640 8                 # Read -> PDF reader
+    WAIT=8 key 36                   # Vol. 1 -> PDF reader
     shot 07-reader-pdf
-    key 123; key 123                # Left arrow x2 (right-to-left: forward)
+    key 123; key 123                # right-to-left: Left goes forward
     shot 08-reader-pdf-next-spread
-    key 53; sleep 2
+    WAIT=2 key 53
 fi
 
 # Quit through the application menu (Cmd+Q), which closes the window and saves.
