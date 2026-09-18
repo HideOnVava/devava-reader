@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ListView?>
+<?import javafx.scene.control.ProgressBar?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.Tooltip?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+
+<!-- Fixed-page reading screen (PDF: comics, manga, scans) -->
+<BorderPane xmlns:fx="http://javafx.com/fxml" fx:controller="com.devavaxp.reader.PdfReaderController"
+            fx:id="root" styleClass="reader-root">
+
+    <!-- Top bar -->
+    <top>
+        <HBox styleClass="reader-bar" alignment="CENTER_LEFT" spacing="6">
+            <padding>
+                <Insets top="6" right="12" bottom="6" left="8"/>
+            </padding>
+            <Button text="←" styleClass="icon, flat" onAction="#onBack" focusTraversable="false">
+                <tooltip>
+                    <Tooltip text="Back to the collection (Esc)"/>
+                </tooltip>
+            </Button>
+            <VBox spacing="0" HBox.hgrow="ALWAYS" alignment="CENTER_LEFT">
+                <Label fx:id="titleLabel" styleClass="reader-title"/>
+                <Label fx:id="chapterLabel" styleClass="reader-subtitle"/>
+            </VBox>
+            <Button fx:id="tocButton" text="☰" styleClass="icon, flat" onAction="#onToggleToc" focusTraversable="false">
+                <tooltip>
+                    <Tooltip text="Table of contents (T)"/>
+                </tooltip>
+            </Button>
+            <Button fx:id="settingsButton" text="⚙" styleClass="icon, flat" onAction="#onSettings" focusTraversable="false">
+                <tooltip>
+                    <Tooltip text="Layout, reading direction, fit and theme"/>
+                </tooltip>
+            </Button>
+            <Button fx:id="fullScreenButton" text="⛶" styleClass="icon, flat" onAction="#onToggleFullScreen"
+                    focusTraversable="false">
+                <tooltip>
+                    <Tooltip text="Full screen (F11)"/>
+                </tooltip>
+            </Button>
+        </HBox>
+    </top>
+
+    <!-- Table of contents (hidden by default) -->
+    <left>
+        <VBox fx:id="tocPanel" styleClass="reader-toc" spacing="8" managed="false" visible="false"
+              prefWidth="300" minWidth="240">
+            <padding>
+                <Insets top="14" right="8" bottom="10" left="12"/>
+            </padding>
+            <Label text="Contents" styleClass="reader-toc-title"/>
+            <ListView fx:id="tocList" VBox.vgrow="ALWAYS" styleClass="toc-list"/>
+        </VBox>
+    </left>
+
+    <!-- Pages -->
+    <center>
+        <StackPane fx:id="viewerContainer" styleClass="reader-viewer">
+            <ScrollPane fx:id="scroller" styleClass="page-scroller" fitToWidth="true" fitToHeight="true"
+                        hbarPolicy="NEVER" vbarPolicy="AS_NEEDED" pannable="true">
+                <HBox fx:id="spreadBox" alignment="CENTER" spacing="6"/>
+            </ScrollPane>
+            <Label fx:id="loadingLabel" text="Preparing the book…" styleClass="reader-loading" mouseTransparent="true"/>
+        </StackPane>
+    </center>
+
+    <!-- Footer: progress -->
+    <bottom>
+        <VBox styleClass="reader-footer" spacing="0">
+            <ProgressBar fx:id="progressBar" progress="0" prefHeight="3" minHeight="3" maxHeight="3"
+                         maxWidth="Infinity" styleClass="book-progress-bar"/>
+            <HBox alignment="CENTER_LEFT" spacing="12">
+                <padding>
+                    <Insets top="5" right="16" bottom="6" left="16"/>
+                </padding>
+                <Label fx:id="pageLabel" text="" styleClass="reader-footer-text"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Label fx:id="hintLabel" text="" styleClass="reader-footer-text"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Label fx:id="progressLabel" text="" styleClass="reader-footer-text"/>
+            </HBox>
+        </VBox>
+    </bottom>
+</BorderPane>

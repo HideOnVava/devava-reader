@@ -536,6 +536,19 @@
     -fx-text-fill: -reader-muted;
 }
 
+/* Fixed-page (PDF) viewer: the scroll pane must not paint its own background */
+
+.page-scroller,
+.page-scroller > .viewport {
+    -fx-background-color: transparent;
+    -fx-background-insets: 0;
+    -fx-padding: 0;
+}
+
+.page-scroller:focused {
+    -fx-background-insets: 0;
+}
+
 /* Table of contents side panel */
 
 .reader-toc {
@@ -637,4 +650,14 @@
     -fx-font-weight: bold;
     -fx-min-width: 36;
     -fx-alignment: center;
+}
+
+/* Format badge on volume rows (only shown for PDF) */
+
+.pill.format {
+    -fx-background-color: transparent;
+    -fx-border-color: -border;
+    -fx-border-radius: 99;
+    -fx-text-fill: -text-muted;
+    -fx-padding: 2 8;
 }

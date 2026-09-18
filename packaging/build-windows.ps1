@@ -1,16 +1,19 @@
 <#
 .SYNOPSIS
-    Builds Devava Reader as a self-contained Windows application (Lector.exe-style
-    app image with an embedded Java runtime) using jpackage from the JDK.
+    Builds Devava Reader as a self-contained Windows application (an app image with an
+    embedded Java runtime) using jlink and jpackage from the JDK.
 
 .DESCRIPTION
-    1. Compiles the project with the Maven wrapper.
-    2. Runs jpackage with the module path made of target/classes plus the JavaFX and
-       Gson jars from the local Maven repository (~/.m2).
-    3. Leaves the result in <Destination>\Devava Reader\Devava Reader.exe.
+    1. Compiles the project with the Maven wrapper and copies its dependencies.
+    2. Builds a trimmed Java runtime with jlink: the JDK modules the app needs plus JavaFX.
+    3. Runs jpackage with that runtime and the application jars on the class path.
+       (PDFBox ships as automatic modules, which jlink cannot link, so the app itself runs
+       from the class path; JavaFX still lives in the runtime image as proper modules.)
+    4. Leaves the result in <Destination>\Devava Reader\Devava Reader.exe.
 
-    Requirements: JDK 21 (jpackage is part of it). No WiX is needed for an app image.
-    Pass -Type exe or -Type msi to build an installer instead (requires WiX Toolset 3).
+    Requirements: JDK 21 with jmods (jlink and jpackage are part of it). No WiX is needed
+    for an app image. Pass -Type exe or -Type msi to build an installer instead (requires
+    WiX Toolset 3).
 
 .EXAMPLE
     .\packaging\build-windows.ps1
@@ -27,17 +30,26 @@ param(
 $ErrorActionPreference = "Stop"
 $projectDir = Split-Path $PSScriptRoot -Parent
 $appName = "Devava Reader"
+$appVersion = "1.1.0"
 $javafxVersion = "21.0.6"
-$gsonVersion = "2.10.1"
+
+# JDK modules the application needs at run time (JavaFX pulls in the rest transitively).
+$jdkModules = @(
+    "java.base", "java.desktop", "java.logging", "java.xml", "java.net.http", "java.scripting",
+    "java.sql", "jdk.jsobject", "jdk.unsupported", "jdk.xml.dom", "jdk.charsets", "jdk.crypto.ec"
+)
+$javafxModules = @("javafx.base", "javafx.graphics", "javafx.controls", "javafx.fxml", "javafx.web", "javafx.media")
 
 # --- Locate the JDK -----------------------------------------------------------
 if (-not $JdkHome) {
     $javaCmd = Get-Command java -ErrorAction SilentlyContinue
     if ($javaCmd) { $JdkHome = Split-Path (Split-Path $javaCmd.Source -Parent) -Parent }
 }
+$jlink = Join-Path $JdkHome "bin\jlink.exe"
 $jpackage = Join-Path $JdkHome "bin\jpackage.exe"
-if (-not (Test-Path $jpackage)) {
-    throw "jpackage.exe not found. Set JAVA_HOME to a JDK 21 installation (or pass -JdkHome)."
+$jmods = Join-Path $JdkHome "jmods"
+if (-not (Test-Path $jpackage) -or -not (Test-Path $jlink) -or -not (Test-Path $jmods)) {
+    throw "jlink/jpackage/jmods not found. Set JAVA_HOME to a full JDK 21 installation (or pass -JdkHome)."
 }
 $env:JAVA_HOME = $JdkHome
 
@@ -46,21 +58,35 @@ Push-Location $projectDir
 try {
     & .\mvnw.cmd -q -B clean package -DskipTests
     if ($LASTEXITCODE -ne 0) { throw "Maven build failed." }
+    & .\mvnw.cmd -q -B dependency:copy-dependencies -DincludeScope=runtime -DoutputDirectory=target\dependency
+    if ($LASTEXITCODE -ne 0) { throw "Could not copy the dependencies." }
 
-    # --- Module path: application classes + dependencies from the local Maven repo ---
-    $m2 = Join-Path $env:USERPROFILE ".m2\repository"
-    $jfx = Join-Path $m2 "org\openjfx"
-    $modules = @(
-        "target\classes",
-        (Join-Path $m2 "com\google\code\gson\gson\$gsonVersion\gson-$gsonVersion.jar")
-    )
-    foreach ($m in "base", "graphics", "controls", "fxml", "web", "media") {
-        $modules += Join-Path $jfx "javafx-$m\$javafxVersion\javafx-$m-$javafxVersion-win.jar"
+    $appJar = Get-ChildItem "target\devava-reader-*.jar" | Select-Object -First 1
+    if (-not $appJar) { throw "Application jar not found in target\." }
+
+    # JavaFX platform jars go into the runtime image; every other library goes on the class path.
+    $javafxJars = Get-ChildItem "target\dependency\javafx-*-win.jar"
+    $libraryJars = Get-ChildItem "target\dependency\*.jar" | Where-Object { $_.Name -notlike "javafx-*" }
+    if ($javafxJars.Count -ne $javafxModules.Count) {
+        throw "Expected $($javafxModules.Count) JavaFX $javafxVersion platform jars in target\dependency, found $($javafxJars.Count)."
     }
-    foreach ($m in $modules) {
-        if (-not (Test-Path $m)) { throw "Missing module path entry: $m (run the build once with network access)." }
-    }
-    $modulePath = $modules -join ";"
+
+    $work = Join-Path $projectDir "target\package"
+    if (Test-Path $work) { Remove-Item -Recurse -Force $work }
+    $input = Join-Path $work "input"
+    $runtime = Join-Path $work "runtime"
+    New-Item -ItemType Directory -Force -Path $input | Out-Null
+    Copy-Item $appJar.FullName $input
+    foreach ($jar in $libraryJars) { Copy-Item $jar.FullName $input }
+
+    # --- Runtime image: JDK modules + JavaFX -------------------------------------
+    $jlinkModulePath = @($jmods) + ($javafxJars | ForEach-Object { $_.FullName })
+    & $jlink `
+        --module-path ($jlinkModulePath -join ";") `
+        --add-modules (($jdkModules + $javafxModules) -join ",") `
+        --output $runtime `
+        --strip-debug --no-header-files --no-man-pages --compress zip-6
+    if ($LASTEXITCODE -ne 0) { throw "jlink failed." }
 
     # --- Package -----------------------------------------------------------------
     New-Item -ItemType Directory -Force -Path $Destination | Out-Null
@@ -73,12 +99,14 @@ try {
     & $jpackage `
         --type $Type `
         --name $appName `
-        --app-version "1.0.0" `
+        --app-version $appVersion `
         --vendor "devava XP Studios" `
-        --description "A minimal desktop EPUB reader for book collections" `
+        --description "A minimal desktop reader for EPUB books and PDF manga collections" `
         --icon (Join-Path $PSScriptRoot "icon.ico") `
-        --module com.devavaxp.reader/com.devavaxp.reader.ReaderApp `
-        --module-path $modulePath `
+        --runtime-image $runtime `
+        --input $input `
+        --main-jar $appJar.Name `
+        --main-class com.devavaxp.reader.Launcher `
         --dest $Destination `
         --java-options "-Dfile.encoding=UTF-8"
     if ($LASTEXITCODE -ne 0) { throw "jpackage failed." }
@@ -94,7 +122,7 @@ try {
         $link.TargetPath = $exe
         $link.WorkingDirectory = $appFolder
         $link.IconLocation = "$exe,0"
-        $link.Description = "Devava Reader - EPUB reader by devava XP Studios"
+        $link.Description = "Devava Reader - EPUB and PDF reader by devava XP Studios"
         $link.Save()
         Write-Host "Desktop shortcut created: $desktop\$appName.lnk"
     }

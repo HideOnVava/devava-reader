@@ -44,9 +44,26 @@ public class Preferences {
     @SerializedName(value = "windowMaximized", alternate = {"ventanaMaximizada"})
     private boolean windowMaximized = false;
 
-    /** Last folder used when importing EPUB files. */
+    /** Last folder used when importing books. */
     @SerializedName(value = "lastFolder", alternate = {"ultimaCarpeta"})
     private String lastFolder = "";
+
+    // Fixed-page (PDF) reader
+    public static final String PDF_LAYOUT_SINGLE = "single";
+    public static final String PDF_LAYOUT_DOUBLE = "double";
+    public static final String PDF_DIRECTION_LTR = "ltr";
+    public static final String PDF_DIRECTION_RTL = "rtl";
+    public static final String PDF_FIT_PAGE = "page";
+    public static final String PDF_FIT_WIDTH = "width";
+
+    @SerializedName("pdfLayout")
+    private String pdfLayout = PDF_LAYOUT_SINGLE;
+
+    @SerializedName("pdfDirection")
+    private String pdfDirection = PDF_DIRECTION_LTR;
+
+    @SerializedName("pdfFit")
+    private String pdfFit = PDF_FIT_PAGE;
 
     public int getFontSize() {
         return Math.max(FONT_MIN, Math.min(FONT_MAX, fontSize));
@@ -116,5 +133,45 @@ public class Preferences {
 
     public void setLastFolder(String lastFolder) {
         this.lastFolder = lastFolder;
+    }
+
+    // ------------------------------------------------------------------
+    // Fixed-page (PDF) reader
+    // ------------------------------------------------------------------
+
+    public String getPdfLayout() {
+        return PDF_LAYOUT_DOUBLE.equalsIgnoreCase(pdfLayout) ? PDF_LAYOUT_DOUBLE : PDF_LAYOUT_SINGLE;
+    }
+
+    public void setPdfLayout(String pdfLayout) {
+        this.pdfLayout = pdfLayout;
+    }
+
+    public boolean isPdfDoublePage() {
+        return PDF_LAYOUT_DOUBLE.equals(getPdfLayout());
+    }
+
+    public String getPdfDirection() {
+        return PDF_DIRECTION_RTL.equalsIgnoreCase(pdfDirection) ? PDF_DIRECTION_RTL : PDF_DIRECTION_LTR;
+    }
+
+    public void setPdfDirection(String pdfDirection) {
+        this.pdfDirection = pdfDirection;
+    }
+
+    public boolean isPdfRightToLeft() {
+        return PDF_DIRECTION_RTL.equals(getPdfDirection());
+    }
+
+    public String getPdfFit() {
+        return PDF_FIT_WIDTH.equalsIgnoreCase(pdfFit) ? PDF_FIT_WIDTH : PDF_FIT_PAGE;
+    }
+
+    public void setPdfFit(String pdfFit) {
+        this.pdfFit = pdfFit;
+    }
+
+    public boolean isPdfFitWidth() {
+        return PDF_FIT_WIDTH.equals(getPdfFit());
     }
 }

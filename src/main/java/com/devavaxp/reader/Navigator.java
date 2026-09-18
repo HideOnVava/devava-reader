@@ -65,8 +65,13 @@ public final class Navigator {
         load("volumes-view.fxml", (VolumesController c) -> c.init(this, collection));
     }
 
+    /** Opens the reader that matches the book's format: reflowable EPUB or fixed-page PDF. */
     public void showReader(Book book) {
-        load("reader-view.fxml", (ReaderController c) -> c.init(this, book));
+        if (Book.FORMAT_PDF.equals(book.getFormat())) {
+            load("pdf-reader-view.fxml", (PdfReaderController c) -> c.init(this, book));
+        } else {
+            load("reader-view.fxml", (ReaderController c) -> c.init(this, book));
+        }
     }
 
     /** Tells the current screen that the application is closing (to save progress, etc.). */
