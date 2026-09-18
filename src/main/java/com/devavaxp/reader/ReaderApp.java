@@ -41,14 +41,16 @@ public class ReaderApp extends Application {
 
         stage.setTitle(APP_NAME);
         stage.getIcons().add(createIcon());
-        stage.setMinWidth(720);
-        stage.setMinHeight(480);
         stage.setScene(scene);
         stage.setMaximized(prefs.isWindowMaximized());
         stage.setOnCloseRequest(e -> close(stage));
 
         navigator.showCollections();
         stage.show();
+        // After show(): on Linux (GTK) a minimum size set before showing replaces the initial
+        // scene size, and the window would open at 720x480 instead of the saved size.
+        stage.setMinWidth(720);
+        stage.setMinHeight(480);
     }
 
     private void close(Stage stage) {
