@@ -50,26 +50,26 @@ base="Devava-Reader-$version-$os-$arch"
 rm -rf "$output" "$stage"
 mkdir -p "$output"
 
-"$build" "${jdk_args[@]}" --type app-image --dest "$stage"
+"$build" ${jdk_args[@]+"${jdk_args[@]}"} --type app-image --dest "$stage"
 
 if [[ "$os" == "linux" ]]; then
     # Portable tarball: one top-level folder, run bin/"Devava Reader" inside it.
     tar -C "$stage" -czf "$output/$base.tar.gz" "Devava Reader"
     echo "Tarball: $output/$base.tar.gz"
 
-    "$build" "${jdk_args[@]}" --type deb --reuse-image --dest "$stage"
+    "$build" ${jdk_args[@]+"${jdk_args[@]}"} --type deb --reuse-image --dest "$stage"
     mv "$stage"/*.deb "$output/$base.deb"
     echo "Package: $output/$base.deb"
 
     if command -v rpmbuild >/dev/null 2>&1; then
-        "$build" "${jdk_args[@]}" --type rpm --reuse-image --dest "$stage"
+        "$build" ${jdk_args[@]+"${jdk_args[@]}"} --type rpm --reuse-image --dest "$stage"
         mv "$stage"/*.rpm "$output/$base.rpm"
         echo "Package: $output/$base.rpm"
     else
         echo "rpmbuild not found: skipping the .rpm package"
     fi
 else
-    "$build" "${jdk_args[@]}" --type dmg --reuse-image --dest "$stage"
+    "$build" ${jdk_args[@]+"${jdk_args[@]}"} --type dmg --reuse-image --dest "$stage"
     mv "$stage"/*.dmg "$output/$base.dmg"
     echo "Disk image: $output/$base.dmg"
 fi

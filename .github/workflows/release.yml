@@ -86,6 +86,8 @@ jobs:
       - name: Smoke test (Linux)
         if: runner.os == 'Linux'
         run: |
+          # The runner has no desktop: create the menu folders the package's post-install script registers into.
+          sudo mkdir -p /usr/share/applications /usr/share/desktop-directories
           sudo apt-get install -y ./dist/release/*.deb
           bash tools/smoke/smoke-linux.sh "/opt/devava-reader/bin/Devava Reader" target/smoke/samples target/smoke/out
 

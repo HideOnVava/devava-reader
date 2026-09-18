@@ -137,7 +137,7 @@ else
         --main-class com.devavaxp.reader.Launcher \
         --dest "$image_dir" \
         --java-options "-Dfile.encoding=UTF-8" \
-        "${mac_opts[@]}"
+        ${mac_opts[@]+"${mac_opts[@]}"}
 fi
 
 mkdir -p "$dest"
