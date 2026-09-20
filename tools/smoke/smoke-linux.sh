@@ -49,6 +49,7 @@ fi
 win()   { xdotool search --onlyvisible --name '^Devava Reader$' | head -1; }
 shot()  { import -window root "$out/$1.png"; echo "screenshot: $1 ($(xdotool getwindowgeometry "$(win)" | sed -n 's/.*Geometry: //p'))"; }
 key()   { xdotool windowactivate --sync "$(win)" key --delay 120 "$@"; sleep "${WAIT:-1}"; }
+type_() { xdotool windowactivate --sync "$(win)" type --delay 60 "$1"; sleep "${WAIT:-1}"; }
 
 # The whole flow is driven with the keyboard, so it does not depend on window size or position:
 # the library focuses its list with the first collection selected, Enter opens a collection,
@@ -64,14 +65,17 @@ shot 04-reader-epub-next-pages
 key b                           # bookmark this page
 key t; key Tab                  # side panel: contents, then the bookmarks tab
 shot 05-reader-epub-bookmarks
+key ctrl+f; type_ ferryman      # search inside the book
+WAIT=3 key Return               # jump to the first hit (another chapter)
+shot 06-reader-epub-search
 key Escape; WAIT=2 key Escape   # close the panel, back to the collection
 key Escape                      # back to the library
 key Down; key Return            # "Sample Manga"
-shot 06-collection-manga
+shot 07-collection-manga
 WAIT=8 key Return               # Vol. 1 -> PDF reader
-shot 07-reader-pdf
+shot 08-reader-pdf
 key Left; key Left              # right-to-left: Left goes forward
-shot 08-reader-pdf-next-spread
+shot 09-reader-pdf-next-spread
 WAIT=2 key Escape
 
 # Close the window the way a user would (WM close request); the app must exit cleanly.

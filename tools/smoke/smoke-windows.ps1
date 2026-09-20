@@ -92,14 +92,17 @@ Shot "04-reader-epub-next-pages"
 Key "b"                             # bookmark this page
 Key "t"; Key "{TAB}"                # side panel: contents, then the bookmarks tab
 Shot "05-reader-epub-bookmarks"
+Key "^f"; Key "ferryman"            # search inside the book
+Key "{ENTER}" 3                     # jump to the first hit (another chapter)
+Shot "06-reader-epub-search"
 Key "{ESC}"; Key "{ESC}" 2          # close the panel, back to the collection
 Key "{ESC}"                         # back to the library
 Key "{DOWN}"; Key "{ENTER}"         # "Sample Manga"
-Shot "06-collection-manga"
+Shot "07-collection-manga"
 Key "{ENTER}" 8                     # Vol. 1 -> PDF reader
-Shot "07-reader-pdf"
+Shot "08-reader-pdf"
 Key "{LEFT}"; Key "{LEFT}"          # right-to-left: Left goes forward
-Shot "08-reader-pdf-next-spread"
+Shot "09-reader-pdf-next-spread"
 Key "{ESC}" 2
 
 $windowProc = Get-Process -Name "Devava Reader" | Where-Object { $_.MainWindowTitle -eq "Devava Reader" } | Select-Object -First 1

@@ -658,6 +658,42 @@
     -fx-padding: 12;
 }
 
+/* Search inside the book: field, status line and hits (chapter, passage with the match) */
+.reader-toc .search-field {
+    -fx-background-color: -reader-bg;
+    -fx-border-color: -reader-border;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-text-fill: -reader-text;
+    -fx-prompt-text-fill: -reader-muted;
+    -fx-padding: 6 10;
+}
+
+.reader-toc .search-field:focused {
+    -fx-border-color: -reader-accent;
+}
+
+.search-status {
+    -fx-font-size: 11.5px;
+    -fx-text-fill: -reader-muted;
+    -fx-padding: 0 0 0 6;
+}
+
+.search-list .list-cell {
+    -fx-padding: 7 8;
+}
+
+.search-snippet .search-context {
+    -fx-fill: -reader-muted;
+    -fx-font-size: 12px;
+}
+
+.search-snippet .search-match {
+    -fx-fill: -reader-accent;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+}
+
 /* Segmented control (rows of mutually exclusive buttons) and reader settings popup */
 
 .settings {

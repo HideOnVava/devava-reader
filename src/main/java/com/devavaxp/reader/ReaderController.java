@@ -1,7 +1,10 @@
 package com.devavaxp.reader;
 
 import com.devavaxp.reader.bridge.JsBridge;
+import com.devavaxp.reader.data.AppDirectories;
 import com.devavaxp.reader.data.DataManager;
+import com.devavaxp.reader.epub.BookSearch;
+import com.devavaxp.reader.epub.ChapterText;
 import com.devavaxp.reader.epub.EpubBook;
 import com.devavaxp.reader.epub.EpubBook.TocEntry;
 import com.devavaxp.reader.epub.EpubExtractor;
@@ -26,6 +29,7 @@ import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
 import javafx.scene.control.ProgressBar;
+import javafx.scene.control.TextField;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyCombination;
 import javafx.scene.input.KeyEvent;
@@ -36,6 +40,8 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.scene.text.Text;
+import javafx.scene.text.TextFlow;
 import javafx.scene.web.WebEngine;
 import javafx.scene.web.WebView;
 import javafx.stage.Popup;
@@ -51,9 +57,13 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Deque;
+import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * Reading screen. The WebView shows one chapter (one spine file) at a time; pagination
@@ -64,7 +74,7 @@ import java.util.Locale;
 public class ReaderController implements Navigator.Screen, JsBridge.Listener {
 
     /** Where to position inside a chapter once it has loaded. */
-    private enum Target { START, END, FRACTION, FRAGMENT }
+    private enum Target { START, END, FRACTION, FRAGMENT, MATCH }
 
     /** Reading themes: colors for the content and CSS class for the surrounding UI. */
     private enum Theme {
@@ -103,9 +113,12 @@ public class ReaderController implements Navigator.Screen, JsBridge.Listener {
     // good match (Windows, macOS, then common Linux fonts, then the generic family).
     private static final String FONT_SERIF = "Georgia, \"Times New Roman\", \"Noto Serif\", \"Liberation Serif\", \"DejaVu Serif\", serif";
     private static final String FONT_SANS = "\"Segoe UI\", \"Helvetica Neue\", Arial, \"Noto Sans\", \"Liberation Sans\", \"DejaVu Sans\", sans-serif";
-    private static final String HINT = "← →  page  ·  B bookmark  ·  T contents  ·  Aa settings  ·  F11 full screen";
+    private static final String HINT = "← →  page  ·  B bookmark  ·  T contents  ·  "
+            + AppDirectories.shortcutKey() + "+F search  ·  Aa settings  ·  F11 full screen";
     private static final String END_HINT = "End of book  ·  marked as read";
     private static final int EXCERPT_LENGTH = 140;
+    private static final int MAX_HITS = 300;
+    private static final int HIT_CONTEXT = 40;
 
     @FXML private BorderPane root;
     @FXML private Button historyBackButton;
@@ -123,6 +136,10 @@ public class ReaderController implements Navigator.Screen, JsBridge.Listener {
     @FXML private HBox panelTabs;
     @FXML private ListView<TocEntry> tocList;
     @FXML private ListView<Bookmark> bookmarkList;
+    @FXML private VBox searchBox;
+    @FXML private TextField searchField;
+    @FXML private ListView<BookSearch.Hit> searchList;
+    @FXML private Label searchStatus;
     @FXML private StackPane viewerContainer;
     @FXML private WebView webView;
     @FXML private ProgressBar progressBar;
@@ -146,6 +163,13 @@ public class ReaderController implements Navigator.Screen, JsBridge.Listener {
     private Target target = Target.START;
     private double targetFraction = 0.0;
     private String targetFragment = null;
+    private BookSearch.Hit targetMatch = null;
+
+    /** Chapter texts prepared for searching, built on the first search. */
+    private List<BookSearch.Chapter> searchIndex;
+    private ExecutorService searchPool;
+    private PauseTransition searchDebounce;
+    private int searchGeneration = 0;
 
     /** Positions from before following a link or a table-of-contents entry: {chapter, fraction}. */
     private final Deque<double[]> history = new ArrayDeque<>();
@@ -188,7 +212,11 @@ public class ReaderController implements Navigator.Screen, JsBridge.Listener {
         setupWebEngine();
         setupInput();
         setupToc();
-        sidePanel = new ReaderSidePanel(tocPanel, panelTabs, tocList, bookmarkList, () -> webView.requestFocus());
+        setupSearch();
+        sidePanel = new ReaderSidePanel(tocPanel, panelTabs, () -> webView.requestFocus(),
+                new ReaderSidePanel.TabView(ReaderSidePanel.Tab.CONTENTS, tocList, tocList),
+                new ReaderSidePanel.TabView(ReaderSidePanel.Tab.BOOKMARKS, bookmarkList, bookmarkList),
+                new ReaderSidePanel.TabView(ReaderSidePanel.Tab.SEARCH, searchBox, searchField));
         bookmarks = new BookmarksPane(book, bookmarkList, new BookmarksPane.Host() {
             @Override public String describe(Bookmark b) { return describeBookmark(b); }
             @Override public void goTo(Bookmark b) { goToBookmark(b); }
@@ -239,7 +267,7 @@ public class ReaderController implements Navigator.Screen, JsBridge.Listener {
             return;
         }
         tocList.getItems().setAll(epub.getToc());
-        sidePanel.setContentsAvailable(!epub.getToc().isEmpty());
+        sidePanel.setAvailable(ReaderSidePanel.Tab.CONTENTS, !epub.getToc().isEmpty());
 
         int start = Math.min(book.getSavedChapter(), epub.chapterCount() - 1);
         double fraction = book.getSavedFraction();
@@ -339,6 +367,11 @@ public class ReaderController implements Navigator.Screen, JsBridge.Listener {
                     Object ok = targetFragment == null ? Boolean.FALSE : reader.call("goToFragment", targetFragment);
                     if (!Boolean.TRUE.equals(ok)) reader.call("goToStart");
                 }
+                case MATCH -> {
+                    Object ok = targetMatch == null ? Boolean.FALSE
+                            : reader.call("goToMatch", targetMatch.match(), targetMatch.before(), targetMatch.after());
+                    if (!Boolean.TRUE.equals(ok)) reader.call("goToStart");
+                }
                 default -> reader.call("goToStart");
             }
         } catch (JSException e) {
@@ -346,11 +379,13 @@ public class ReaderController implements Navigator.Screen, JsBridge.Listener {
         }
         target = Target.START;
         targetFragment = null;
+        targetMatch = null;
         loading = false;
         loadingLabel.setVisible(false);
         webView.setOpacity(1);
         updateState();
-        webView.requestFocus();
+        // While the side panel is open (browsing search results) the focus stays there.
+        if (!sidePanel.isVisible()) webView.requestFocus();
     }
 
     private static Path pathOfLocation(String location) {
@@ -635,18 +670,24 @@ public class ReaderController implements Navigator.Screen, JsBridge.Listener {
         if (closed) return;
         if (settingsPopup != null && settingsPopup.isShowing()) return;
         Node focused = navigator.getScene().getFocusOwner();
+        boolean ctrl = ev.isControlDown() || ev.isShortcutDown();
+        if (ev.getCode() == KeyCode.F && ctrl) {
+            openSearch();
+            ev.consume();
+            return;
+        }
         boolean focusInToc = tocPanel.isVisible() && focused != null && isDescendant(focused, tocPanel);
         if (focusInToc) {
-            if (ev.getCode() == KeyCode.ESCAPE || ev.getCode() == KeyCode.T) {
+            boolean typing = focused == searchField;
+            if (ev.getCode() == KeyCode.ESCAPE || (ev.getCode() == KeyCode.T && !typing)) {
                 showToc(false);
                 ev.consume();
             } else if (ev.getCode() == KeyCode.TAB) {
-                sidePanel.switchToOther(); // Contents <-> Bookmarks
+                sidePanel.switchToOther(); // Contents -> Bookmarks -> Search
                 ev.consume();
             }
-            return; // arrows, Enter, N and Delete are handled by the lists themselves
+            return; // arrows, Enter, N and Delete are handled by the lists and the field themselves
         }
-        boolean ctrl = ev.isControlDown() || ev.isShortcutDown();
         switch (ev.getCode()) {
             case RIGHT -> { if (ctrl) nextChapter(); else nextPage(); ev.consume(); }
             case LEFT -> { if (ctrl) previousChapter(); else if (ev.isAltDown()) goBackInHistory(); else previousPage(); ev.consume(); }
@@ -815,6 +856,160 @@ public class ReaderController implements Navigator.Screen, JsBridge.Listener {
         }
     }
 
+    // ------------------------------------------------------------------
+    // Search inside the book
+    // ------------------------------------------------------------------
+
+    private void setupSearch() {
+        searchStatus.setText("");
+        searchDebounce = new PauseTransition(Duration.millis(250));
+        searchDebounce.setOnFinished(e -> runSearch());
+        searchField.textProperty().addListener((obs, previous, text) -> searchDebounce.playFromStart());
+        searchField.setOnKeyPressed(ev -> {
+            switch (ev.getCode()) {
+                case ENTER -> {
+                    searchDebounce.stop();
+                    if (searchList.getItems().isEmpty()) runSearch(); else jumpToResult(selectedOrFirstHit());
+                    ev.consume();
+                }
+                case DOWN -> {
+                    if (!searchList.getItems().isEmpty()) {
+                        if (searchList.getSelectionModel().isEmpty()) searchList.getSelectionModel().selectFirst();
+                        searchList.requestFocus();
+                    }
+                    ev.consume();
+                }
+                default -> { }
+            }
+        });
+        searchList.setPlaceholder(new Label(""));
+        searchList.setCellFactory(list -> new HitCell());
+        searchList.setOnMouseClicked(ev -> {
+            if (ev.getButton() == MouseButton.PRIMARY) jumpToResult(searchList.getSelectionModel().getSelectedItem());
+        });
+        searchList.setOnKeyPressed(ev -> {
+            if (ev.getCode() == KeyCode.ENTER) {
+                jumpToResult(searchList.getSelectionModel().getSelectedItem());
+                ev.consume();
+            }
+        });
+    }
+
+    /** Opens the side panel on the search tab with the field ready to type into. */
+    private void openSearch() {
+        sidePanel.show(ReaderSidePanel.Tab.SEARCH);
+    }
+
+    private BookSearch.Hit selectedOrFirstHit() {
+        BookSearch.Hit selected = searchList.getSelectionModel().getSelectedItem();
+        return selected != null ? selected : (searchList.getItems().isEmpty() ? null : searchList.getItems().get(0));
+    }
+
+    /** Searches the whole book in the background and shows the hits; stale results are dropped. */
+    private void runSearch() {
+        if (closed) return;
+        String query = searchField.getText();
+        final int generation = ++searchGeneration;
+        if (BookSearch.normalizeQuery(query).isEmpty()) {
+            searchList.getItems().clear();
+            searchStatus.setText(query == null || query.isBlank() ? "" : "Type at least " + BookSearch.MIN_QUERY_LENGTH + " characters");
+            return;
+        }
+        if (searchPool == null) {
+            searchPool = Executors.newSingleThreadExecutor(r -> {
+                Thread t = new Thread(r, "book-search");
+                t.setDaemon(true);
+                return t;
+            });
+        }
+        searchStatus.setText("Searching…");
+        searchPool.submit(() -> {
+            List<BookSearch.Hit> hits;
+            try {
+                hits = BookSearch.search(searchIndex(), query, MAX_HITS, HIT_CONTEXT);
+            } catch (RuntimeException e) {
+                System.err.println("Search failed: " + e.getMessage());
+                hits = List.of();
+            }
+            List<BookSearch.Hit> result = hits;
+            Platform.runLater(() -> {
+                if (closed || generation != searchGeneration) return;
+                searchList.getItems().setAll(result);
+                searchStatus.setText(result.isEmpty() ? "No results"
+                        : result.size() >= MAX_HITS ? MAX_HITS + "+ results (showing the first " + MAX_HITS + ")"
+                        : result.size() + (result.size() == 1 ? " result" : " results"));
+            });
+        });
+    }
+
+    /** The chapter texts, extracted on the first search (a few hundred ms for a long novel). */
+    private synchronized List<BookSearch.Chapter> searchIndex() {
+        if (searchIndex == null) {
+            List<BookSearch.Chapter> chapters = new ArrayList<>(epub.chapterCount());
+            for (EpubBook.SpineItem item : epub.getSpine()) {
+                String text;
+                try {
+                    text = ChapterText.extract(item.file());
+                } catch (IOException | RuntimeException e) {
+                    text = "";
+                }
+                chapters.add(new BookSearch.Chapter(text));
+            }
+            searchIndex = chapters;
+        }
+        return searchIndex;
+    }
+
+    /** Goes to a hit, keeping the panel open so that the next result is one key away. */
+    private void jumpToResult(BookSearch.Hit hit) {
+        if (hit == null || !engineReady()) return;
+        pushHistory();
+        if (hit.chapter() == chapter) {
+            Object ok = reader("goToMatch", hit.match(), hit.before(), hit.after());
+            if (!Boolean.TRUE.equals(ok)) reader("goToStart");
+            updateState();
+        } else {
+            targetMatch = hit;
+            loadChapter(hit.chapter(), Target.MATCH);
+        }
+    }
+
+    /** Chapter on one line, the passage with the match emphasised below. */
+    private final class HitCell extends ListCell<BookSearch.Hit> {
+        private final Label where = new Label();
+        private final Text before = new Text();
+        private final Text match = new Text();
+        private final Text after = new Text();
+        private final TextFlow snippet = new TextFlow(before, match, after);
+        private final VBox box = new VBox(2, where, snippet);
+
+        HitCell() {
+            where.getStyleClass().add("bookmark-where");
+            snippet.getStyleClass().add("search-snippet");
+            before.getStyleClass().add("search-context");
+            after.getStyleClass().add("search-context");
+            match.getStyleClass().add("search-match");
+            where.maxWidthProperty().bind(searchList.widthProperty().subtract(36));
+            snippet.maxWidthProperty().bind(searchList.widthProperty().subtract(36));
+            setPrefWidth(0);
+        }
+
+        @Override
+        protected void updateItem(BookSearch.Hit item, boolean empty) {
+            super.updateItem(item, empty);
+            if (empty || item == null) {
+                setGraphic(null);
+                return;
+            }
+            String title = epub.chapterTitle(item.chapter(), "");
+            where.setText(title.isEmpty() ? "Chapter " + (item.chapter() + 1) : title);
+            before.setText((item.before().isEmpty() || item.before().startsWith(" ") ? "" : "…") + item.before());
+            match.setText(item.match());
+            after.setText(item.after() + (item.after().isEmpty() || item.after().endsWith(".") ? "" : "…"));
+            setGraphic(box);
+        }
+    }
+
     /** Shows a short confirmation in the footer, then restores the usual hint. */
     private void flashHint(String text) {
         hintLabel.setText(text);
@@ -975,6 +1170,8 @@ public class ReaderController implements Navigator.Screen, JsBridge.Listener {
         saveNow();
         navigator.getScene().removeEventFilter(KeyEvent.KEY_PRESSED, keyFilter);
         if (settingsPopup != null) settingsPopup.hide();
+        if (searchDebounce != null) searchDebounce.stop();
+        if (searchPool != null) searchPool.shutdownNow();
         try {
             engine.getLoadWorker().cancel();
             engine.load("about:blank");

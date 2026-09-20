@@ -88,6 +88,8 @@ checksums.
   PDF outline as a table of contents, and progress by page.
 - **Bookmarks with notes** in both readers: press `B` on any page, find it again in the
   side panel (`T`, *Bookmarks* tab) with the first words of the page and your note.
+- **Search inside the book** (EPUB): `Ctrl+F`, type, and jump straight to any occurrence;
+  accents and case do not matter.
 - **Light / sepia / dark themes** shared by both readers.
 - **"Continue reading"** card on the main screen.
 - Drag & drop `.epub` / `.pdf` files onto a collection; natural sort on import (Volume 2 before
@@ -107,7 +109,8 @@ On macOS, `Ctrl` in the tables below means `⌘`.
 | `Ctrl+→` / `Ctrl+←` | Next / previous chapter |
 | `Home` / `End` | Start / end of the chapter (`Ctrl` = of the book) |
 | `B` | Bookmark this page (again: remove the bookmark) |
-| `T` | Side panel: table of contents and bookmarks (`Tab` switches between them) |
+| `T` | Side panel: table of contents, bookmarks and search (`Tab` switches between them) |
+| `Ctrl+F` | Search inside the book (side panel, *Search* tab) |
 | `Backspace` / `Alt+←` | Go back to where you were before following a link |
 | `Ctrl` `+` / `Ctrl` `-` | Font size |
 | `1` / `2` | One or two columns |
@@ -121,6 +124,13 @@ In the *Bookmarks* tab of the side panel, `Enter` or a click jumps to the bookma
 `F2`) edits its one-line note and `Delete` removes it; the same works in the PDF reader. A
 bookmark remembers the chapter and the exact page position, plus the first words of the page
 so it can be recognised without opening the book. Bookmarks are saved with the library.
+
+In the *Search* tab, results appear as you type (two characters or more) with the chapter and
+the passage around each match; `Enter` in the field jumps to the first (or the selected)
+result, `↓` moves to the list, and `Enter` or a click on a result jumps to that occurrence,
+which is selected on the page. The panel stays open, so `↓` `Enter` walks through the results;
+`Esc` closes it and `Backspace` returns to where you were before the jump. Matching ignores
+case and accents ("cancion" finds "canción") and typographic quotes.
 
 ### PDF / manga reader
 
@@ -399,7 +409,7 @@ com.devavaxp.reader
 ├── VolumesController           volumes of a collection: import (.epub/.pdf), order, mark, read
 ├── ReaderController            EPUB reader: chapters, keyboard/mouse, contents, settings, progress
 ├── PdfReaderController         fixed-page reader: spreads, direction, fit, background rendering
-├── ReaderSidePanel             Contents | Bookmarks switch of the readers' side panel
+├── ReaderSidePanel             Contents | Bookmarks | Search tabs of the readers' side panel
 ├── BookmarksPane               bookmark list shared by both readers: jump, note, remove
 ├── UiControls                  small controls built in code (segmented rows, vector icons)
 ├── Dialogs                     dialogs styled like the app
@@ -411,6 +421,8 @@ com.devavaxp.reader
 ├── epub/EpubExtractor          safe ZIP extraction into the temp cache
 ├── epub/EpubParser             container.xml → OPF (spine, manifest) → nav / NCX (contents)
 ├── epub/EpubBook               reading order, table of contents and size-weighted progress
+├── epub/ChapterText            plain text of a chapter, for searching
+├── epub/BookSearch             case- and accent-insensitive search with context snippets
 ├── pdf/PageSource              what the fixed-page reader needs from a book (pages, sizes,
 │                               rendering, outline) — the seam for other formats, e.g. CBZ
 ├── pdf/PdfPageSource           PageSource backed by Apache PDFBox
