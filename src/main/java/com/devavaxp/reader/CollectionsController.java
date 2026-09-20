@@ -1,12 +1,17 @@
 package com.devavaxp.reader;
 
 import com.devavaxp.reader.data.AppDirectories;
+import com.devavaxp.reader.data.BookFolder;
 import com.devavaxp.reader.data.DataManager;
 import com.devavaxp.reader.data.TextUtils;
 import com.devavaxp.reader.model.Book;
 import com.devavaxp.reader.model.BookCollection;
+import com.devavaxp.reader.model.Preferences;
+import javafx.animation.PauseTransition;
+import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.css.PseudoClass;
 import javafx.fxml.FXML;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
@@ -19,12 +24,21 @@ import javafx.scene.control.ProgressBar;
 import javafx.scene.control.SeparatorMenuItem;
 import javafx.scene.control.TextField;
 import javafx.scene.control.Tooltip;
+import javafx.scene.input.DragEvent;
+import javafx.scene.input.Dragboard;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.MouseButton;
+import javafx.scene.input.TransferMode;
+import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
+import javafx.stage.DirectoryChooser;
+import javafx.util.Duration;
 
+import java.io.File;
+import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -36,6 +50,10 @@ import java.util.Optional;
  * collection holds. Pinned collections are always listed first, and collections can be
  * moved up and down; moving is only offered while the full, unfiltered list is visible,
  * so that a position always means the real position.
+ * <p>
+ * Besides creating an empty collection by name, a whole folder of books can be imported
+ * at once (button or drag and drop): it becomes a collection named after the folder, or
+ * tops up the collection that already has that name (see {@link DataManager#importFolder}).
  */
 public class CollectionsController implements Navigator.Screen {
 
@@ -44,6 +62,10 @@ public class CollectionsController implements Navigator.Screen {
     private static final String FILTER_EPUB = Book.FORMAT_EPUB;
     private static final String FILTER_PDF = Book.FORMAT_PDF;
 
+    /** Pseudo-class of the list while folders are dragged over the screen (see styles.css). */
+    private static final PseudoClass DROP_TARGET = PseudoClass.getPseudoClass("drop-target");
+
+    @FXML private BorderPane screen;
     @FXML private Label summaryLabel;
     @FXML private HBox filterBar;
     @FXML private TextField searchField;
@@ -65,6 +87,8 @@ public class CollectionsController implements Navigator.Screen {
     private ObservableList<BookCollection> visibleCollections = FXCollections.observableArrayList();
     private Book bookToContinue;
     private MenuItem pinMenuItem;
+    /** Brings the summary line back after a status message. */
+    private final PauseTransition statusTimer = new PauseTransition(Duration.seconds(6));
 
     // ------------------------------------------------------------------
     // Initialization
@@ -112,6 +136,12 @@ public class CollectionsController implements Navigator.Screen {
                 {FILTER_ALL, "All"}, {FILTER_EPUB, "EPUB"}, {FILTER_PDF, "PDF"}});
         formatFilter.setMinWidth(220);
         filterBar.getChildren().add(formatFilter);
+
+        // Folders dropped anywhere on the screen are imported as collections
+        screen.setOnDragOver(this::onDragOver);
+        screen.setOnDragExited(ev -> collectionList.pseudoClassStateChanged(DROP_TARGET, false));
+        screen.setOnDragDropped(this::onDragDropped);
+        statusTimer.setOnFinished(e -> updateSummary());
 
         reload();
         if (allCollections.isEmpty()) {
@@ -180,22 +210,37 @@ public class CollectionsController implements Navigator.Screen {
             collectionList.getSelectionModel().select(selected);
         }
 
-        boolean filtering = isFiltering();
-        collectionList.setPlaceholder(new Label(filtering
+        collectionList.setPlaceholder(new Label(isFiltering()
                 ? "No collections match."
-                : "No collections yet. Create one to get started."));
+                : "No collections yet. Create one, or import a folder of books, to get started."));
+        statusTimer.stop();
+        updateSummary();
+        updateButtons();
+    }
 
+    /** The line under the title: how many collections and volumes there are (or match). */
+    private void updateSummary() {
         int total = allCollections.size();
-        int books = dataManager.getBooks().size();
         if (total == 0) {
             summaryLabel.setText("Your collections");
-        } else if (filtering) {
-            summaryLabel.setText("Showing " + matching.size() + " of " + TextUtils.plural(total, "collection", "collections"));
+        } else if (isFiltering()) {
+            summaryLabel.setText("Showing " + visibleCollections.size() + " of "
+                    + TextUtils.plural(total, "collection", "collections"));
         } else {
             summaryLabel.setText(TextUtils.plural(total, "collection", "collections") + " · "
-                    + TextUtils.plural(books, "volume", "volumes"));
+                    + TextUtils.plural(dataManager.getBooks().size(), "volume", "volumes"));
         }
-        updateButtons();
+    }
+
+    /** Shows a short message in place of the summary line; the summary comes back by itself. */
+    private void showStatus(String text) {
+        summaryLabel.setText(text);
+        statusTimer.playFromStart();
+    }
+
+    @Override
+    public void onLeave() {
+        statusTimer.stop();
     }
 
     private boolean matchesFormatFilter(BookCollection collection) {
@@ -251,6 +296,115 @@ public class CollectionsController implements Navigator.Screen {
     @FXML
     private void onOpenCollection() {
         openSelected();
+    }
+
+    // ------------------------------------------------------------------
+    // Import a folder as a collection
+    // ------------------------------------------------------------------
+
+    @FXML
+    private void onImportFolder() {
+        DirectoryChooser chooser = new DirectoryChooser();
+        chooser.setTitle("Import a folder as a collection");
+        Preferences prefs = dataManager.getPreferences();
+        if (!prefs.getLastFolder().isEmpty()) {
+            File folder = new File(prefs.getLastFolder());
+            if (folder.isDirectory()) chooser.setInitialDirectory(folder);
+        }
+        File chosen = chooser.showDialog(navigator.getStage());
+        if (chosen == null) return;
+        // Next time, start where the folders of the series live.
+        File parent = chosen.getAbsoluteFile().getParentFile();
+        prefs.setLastFolder(parent == null ? chosen.getAbsolutePath() : parent.getAbsolutePath());
+        importFolders(List.of(chosen.toPath()));
+    }
+
+    private void onDragOver(DragEvent ev) {
+        if (hasFolders(ev.getDragboard())) {
+            ev.acceptTransferModes(TransferMode.COPY);
+            collectionList.pseudoClassStateChanged(DROP_TARGET, true);
+        }
+        ev.consume();
+    }
+
+    private void onDragDropped(DragEvent ev) {
+        collectionList.pseudoClassStateChanged(DROP_TARGET, false);
+        List<Path> folders = ev.getDragboard().hasFiles()
+                ? ev.getDragboard().getFiles().stream().filter(File::isDirectory).map(File::toPath).toList()
+                : List.of();
+        ev.setDropCompleted(!folders.isEmpty());
+        ev.consume();
+        // Import once the drop has been acknowledged: dialogs must not open mid-drag.
+        if (!folders.isEmpty()) Platform.runLater(() -> importFolders(folders));
+    }
+
+    private static boolean hasFolders(Dragboard dragboard) {
+        return dragboard.hasFiles() && dragboard.getFiles().stream().anyMatch(File::isDirectory);
+    }
+
+    /**
+     * Imports each folder as a collection named after it (or into the collection that
+     * already has that name), selects the last one and reports what happened.
+     */
+    private void importFolders(List<Path> folders) {
+        List<DataManager.FolderImport> imported = new ArrayList<>();
+        List<String> problems = new ArrayList<>();
+        for (Path folder : folders) {
+            String name = BookFolder.nameOf(folder);
+            BookFolder.Scan scan = BookFolder.scan(folder);
+            if (!scan.complete()) {
+                problems.add("\"" + name + "\" holds too many files and folders to be one collection;"
+                        + " import the folder of a single series instead.");
+            } else if (scan.books().isEmpty()) {
+                problems.add("\"" + name + "\" contains no .epub or .pdf files.");
+            } else {
+                imported.add(dataManager.importFolder(name, scan.books()));
+            }
+        }
+        if (!imported.isEmpty()) {
+            // The collections must be visible: clear any search or filter that would hide them.
+            searchField.clear();
+            UiControls.select(formatFilter, FILTER_ALL);
+            reload();
+            // Select the last collection that changed (or the last one touched, if none did).
+            BookCollection last = imported.stream()
+                    .filter(r -> r.created() || !r.added().isEmpty())
+                    .reduce((a, b) -> b).orElse(imported.get(imported.size() - 1)).collection();
+            collectionList.getSelectionModel().select(last);
+            collectionList.scrollTo(last);
+            collectionList.requestFocus();
+        }
+        if (!problems.isEmpty()) {
+            Dialogs.info(navigator.getStage(), imported.isEmpty() ? "Nothing imported" : "Some folders were not imported",
+                    String.join("\n\n", problems));
+        }
+        // After the dialog, so that the message stays on screen for its whole time.
+        if (!imported.isEmpty()) showStatus(describe(imported));
+    }
+
+    /** One line about what an import did, for the status line. */
+    private static String describe(List<DataManager.FolderImport> imported) {
+        if (imported.size() == 1) {
+            DataManager.FolderImport r = imported.get(0);
+            String title = "\"" + r.collection().getTitle() + "\"";
+            if (r.created()) return title + " created with " + TextUtils.plural(r.added().size(), "volume", "volumes");
+            if (r.added().isEmpty()) return "Nothing new in " + title + ": its "
+                    + TextUtils.plural(r.alreadyThere(), "volume was", "volumes were") + " already there";
+            return TextUtils.plural(r.added().size(), "volume", "volumes") + " added to " + title;
+        }
+        int created = 0;
+        int updated = 0;
+        int unchanged = 0;
+        for (DataManager.FolderImport r : imported) {
+            if (r.created()) created++;
+            else if (r.added().isEmpty()) unchanged++;
+            else updated++;
+        }
+        List<String> parts = new ArrayList<>();
+        if (created > 0) parts.add(TextUtils.plural(created, "collection created", "collections created"));
+        if (updated > 0) parts.add(TextUtils.plural(updated, "collection updated", "collections updated"));
+        if (unchanged > 0) parts.add(TextUtils.plural(unchanged, "folder with nothing new", "folders with nothing new"));
+        return String.join(" · ", parts);
     }
 
     @FXML

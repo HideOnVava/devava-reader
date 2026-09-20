@@ -2,6 +2,7 @@ import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.UUID;
 
 /**
@@ -16,6 +17,8 @@ import java.util.UUID;
  *
  * The novel "The Lantern Road, Vol. 2" is the most recently read book, so the "Continue
  * reading" card opens the EPUB reader; "Sample Manga, Vol. 1" is the second most recent.
+ * A subfolder "Lantern Import" holds copies of the three novels and is not in the library:
+ * the smoke tests import it as a collection.
  */
 public class SampleLibrary {
 
@@ -24,6 +27,12 @@ public class SampleLibrary {
         dir.mkdirs();
         SampleEpubGen.main(new String[]{dir.getPath()});
         MangaPdfGen.main(new String[]{dir.getPath()});
+        File importFolder = new File(dir, "Lantern Import");
+        importFolder.mkdirs();
+        for (int v = 1; v <= 3; v++) {
+            String name = "The Lantern Road Vol. " + v + ".epub";
+            Files.copy(new File(dir, name).toPath(), new File(importFolder, name).toPath(), StandardCopyOption.REPLACE_EXISTING);
+        }
 
         long now = System.currentTimeMillis();
         String novel = "aaaaaaaa-0000-0000-0000-000000000001";

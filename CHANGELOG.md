@@ -5,6 +5,20 @@ All notable changes to Devava Reader are documented here. The format follows
 [Semantic Versioning](https://semver.org/). Each release on GitHub takes its notes from
 the matching section of this file.
 
+## [1.5.0] - 2026-09-20
+
+### Added
+- **Import a folder as a collection**: the *Import folder…* button in the library, or a
+  folder dropped anywhere on it, creates a collection named after the folder with every
+  `.epub` and `.pdf` inside it as volumes, in shelf order (the files of the folder first,
+  in natural order, then each subfolder). Several folders can be dropped at once. If a
+  collection with that name already exists, only the volumes that are new are added, so
+  the same folder can be dropped again after new volumes arrive.
+- Folders can also be dropped on a collection: their books are added to it.
+
+### Changed
+- The list highlights itself while files or folders are dragged over it.
+
 ## [1.4.0] - 2026-09-19
 
 ### Added
@@ -81,6 +95,7 @@ Initial version, not published as a release.
 - Library stored in a single JSON file under `Documents\Devava Reader`, created
   automatically; the previous Spanish library file is imported on first launch.
 
+[1.5.0]: https://github.com/HideOnVava/devava-reader/releases/tag/v1.5.0
 [1.4.0]: https://github.com/HideOnVava/devava-reader/releases/tag/v1.4.0
 [1.3.0]: https://github.com/HideOnVava/devava-reader/releases/tag/v1.3.0
 [1.2.0]: https://github.com/HideOnVava/devava-reader/releases/tag/v1.2.0

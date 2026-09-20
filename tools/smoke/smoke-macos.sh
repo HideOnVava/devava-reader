@@ -35,6 +35,9 @@ se() { osascript -e 'tell application "System Events" to tell process "Devava Re
 shot() { screencapture -x "$out/$1.png"; echo "screenshot: $1"; }
 key() { se -e 'set frontmost to true' -e "key code $1" >/dev/null; sleep "${WAIT:-1}"; }
 cmd_key() { se -e 'set frontmost to true' -e "keystroke \"$1\" using command down" >/dev/null; sleep "${WAIT:-1}"; }
+cmd_shift_key() { se -e 'set frontmost to true' -e "keystroke \"$1\" using {command down, shift down}" >/dev/null; sleep "${WAIT:-1}"; }
+# Whether the system folder panel is still open (as a window of its own or as a sheet).
+panel_open() { se -e 'set n to count of windows' -e 'set s to exists sheet 1 of window 1' -e 'return (n > 1) or s' 2>/dev/null | grep -q true; }
 type_() { se -e 'set frontmost to true' -e "keystroke \"$1\"" >/dev/null; sleep "${WAIT:-1}"; }
 
 automation=true
@@ -68,6 +71,14 @@ if $automation; then
     key 123; key 123                # right-to-left: Left goes forward
     shot 09-reader-pdf-next-spread
     WAIT=4 key 53                   # leave the reader and let its background work finish
+    key 53                          # back to the library
+    # Import a folder as a collection: Tab reaches "Import folder…" and Enter opens the system
+    # folder panel; Cmd+Shift+G asks for a path, Return goes there and Return again chooses it
+    # (if the panel is still open).
+    key 48; key 48; key 48; WAIT=3 key 36
+    cmd_shift_key g; type_ "$(cd "$samples" && pwd)/Lantern Import"; WAIT=3 key 36
+    if panel_open; then WAIT=3 key 36; fi
+    shot 10-library-imported
 fi
 
 # Quit through the application menu (Cmd+Q), which closes the window and saves.
@@ -93,5 +104,6 @@ fi
 if $automation; then
     grep -q '"savedPosition": "1[2-9]:' "$library" || { echo "Reading progress was not saved:"; grep -n savedPosition "$library"; exit 1; }
     grep -q '"excerpt": "[A-Za-z]' "$library" || { echo "The bookmark was not saved:"; grep -n -e excerpt -e bookmarks "$library"; exit 1; }
+    grep -q '"title": "Lantern Import"' "$library" || { echo "The folder was not imported as a collection:"; grep -n '"title"' "$library"; exit 1; }
 fi
 echo "Smoke test passed (automation: $automation)"

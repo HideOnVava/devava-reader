@@ -272,6 +272,61 @@ class DataManagerTest {
         return dm.getCollections().stream().map(BookCollection::getTitle).toList();
     }
 
+    // ------------------------------------------------------------------
+    // Importing folders
+    // ------------------------------------------------------------------
+
+    @Test
+    void importingAFolderCreatesTheCollectionAndImportingItAgainOnlyAddsWhatIsNew() {
+        DataManager dm = new DataManager(file());
+        dm.addCollection(new BookCollection("Other"));
+        Path v1 = folder.resolve("Series/Vol 1.epub");
+        Path v2 = folder.resolve("Series/Vol 2.epub");
+        Path v3 = folder.resolve("Series/Extras/Vol 3.pdf");
+
+        DataManager.FolderImport first = dm.importFolder("Series", List.of(v1, v2));
+        assertTrue(first.created());
+        assertEquals("Series", first.collection().getTitle());
+        assertEquals(List.of("Vol 1", "Vol 2"), first.added().stream().map(Book::getTitle).toList());
+        assertEquals(0, first.alreadyThere());
+        assertEquals(List.of("Other", "Series"), collectionTitles(dm), "the new collection goes last");
+        assertEquals(v1.toAbsolutePath().normalize().toString(), first.added().get(0).getFilePath());
+        assertEquals(Book.FORMAT_EPUB, first.added().get(0).getFormat());
+
+        // The same folder again, with a new volume in a subfolder: matched by title, ignoring case.
+        DataManager.FolderImport again = dm.importFolder("series", List.of(v1, v2, v3, v3));
+        assertFalse(again.created());
+        assertEquals(first.collection().getId(), again.collection().getId());
+        assertEquals(List.of("Vol 3"), again.added().stream().map(Book::getTitle).toList());
+        assertEquals(3, again.alreadyThere(), "two known files and one repeated in the batch");
+        assertEquals(Book.FORMAT_PDF, again.added().get(0).getFormat());
+        assertEquals(List.of("Vol 1", "Vol 2", "Vol 3"), titles(dm, first.collection()));
+        assertEquals(List.of(1, 2, 3), dm.getBooksOf(first.collection().getId()).stream().map(Book::getOrder).toList());
+        assertEquals(2, dm.getCollections().size(), "no second \"Series\" collection");
+
+        DataManager reloaded = new DataManager(file());
+        assertEquals(List.of("Vol 1", "Vol 2", "Vol 3"), titles(reloaded, first.collection()), "the import is saved");
+        assertTrue(reloaded.findCollectionByTitle("  SERIES ").isPresent());
+        assertTrue(reloaded.findCollectionByTitle("Series 2").isEmpty());
+    }
+
+    @Test
+    void addVolumesAppendsAfterTheExistingOnesAndSkipsDuplicates() {
+        DataManager dm = new DataManager(file());
+        BookCollection c = new BookCollection("Manga");
+        dm.addCollection(c);
+        Path a = folder.resolve("a.pdf");
+        Path b = folder.resolve("b.pdf");
+        dm.addBook(new Book(c.getId(), "A", a.toString(), 1));
+
+        List<Book> added = dm.addVolumes(c, List.of(folder.resolve("./a.pdf"), b, b));
+        assertEquals(List.of("b"), added.stream().map(Book::getTitle).toList());
+        assertEquals(2, added.get(0).getOrder());
+        assertEquals(List.of("A", "b"), titles(dm, c));
+        assertTrue(dm.addVolumes(c, List.of(a, b)).isEmpty(), "nothing new: nothing added");
+        assertEquals(List.of("A", "b"), titles(new DataManager(file()), c));
+    }
+
     private static List<String> titles(DataManager dm, BookCollection c) {
         return dm.getBooksOf(c.getId()).stream().map(Book::getTitle).toList();
     }

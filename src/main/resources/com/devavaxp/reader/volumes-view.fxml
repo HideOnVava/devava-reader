@@ -39,7 +39,7 @@
             </MenuButton>
             <Button text="＋  Add books" styleClass="primary" onAction="#onAddBooks">
                 <tooltip>
-                    <Tooltip text="EPUB and PDF. You can also drag files onto the list"/>
+                    <Tooltip text="EPUB and PDF. You can also drag files or folders onto the list"/>
                 </tooltip>
             </Button>
         </HBox>
