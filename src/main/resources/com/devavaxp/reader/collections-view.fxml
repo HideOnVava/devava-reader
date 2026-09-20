@@ -13,7 +13,7 @@
 <?import javafx.scene.layout.VBox?>
 
 <!-- Main screen: the list of collections -->
-<BorderPane xmlns:fx="http://javafx.com/fxml" fx:controller="com.devavaxp.reader.CollectionsController"
+<BorderPane xmlns:fx="http://javafx.com/fxml" fx:id="screen" fx:controller="com.devavaxp.reader.CollectionsController"
             styleClass="screen">
 
     <top>
@@ -79,6 +79,11 @@
             <TextField fx:id="newCollectionField" promptText="New collection name…" HBox.hgrow="ALWAYS"
                        onAction="#onCreateCollection"/>
             <Button text="Create collection" styleClass="primary" onAction="#onCreateCollection"/>
+            <Button text="Import folder…" onAction="#onImportFolder">
+                <tooltip>
+                    <Tooltip text="Create a collection from a folder of .epub / .pdf files (you can also drop folders here)"/>
+                </tooltip>
+            </Button>
             <Region prefWidth="8"/>
             <Button fx:id="openButton" text="Open  →" onAction="#onOpenCollection" disable="true">
                 <tooltip>

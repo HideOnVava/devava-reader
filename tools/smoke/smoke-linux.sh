@@ -50,6 +50,10 @@ win()   { xdotool search --onlyvisible --name '^Devava Reader$' | head -1; }
 shot()  { import -window root "$out/$1.png"; echo "screenshot: $1 ($(xdotool getwindowgeometry "$(win)" | sed -n 's/.*Geometry: //p'))"; }
 key()   { xdotool windowactivate --sync "$(win)" key --delay 120 "$@"; sleep "${WAIT:-1}"; }
 type_() { xdotool windowactivate --sync "$(win)" type --delay 60 "$1"; sleep "${WAIT:-1}"; }
+# The system folder dialog is a window of its own: keys for it must go to it, not to the main window.
+dialog()  { xdotool search --onlyvisible --name '^Import a folder as a collection$' 2>/dev/null | head -1 || true; }
+dkey()    { xdotool windowactivate --sync "$(dialog)" key --delay 120 "$@"; sleep "${WAIT:-1}"; }
+dtype()   { xdotool windowactivate --sync "$(dialog)" type --delay 40 "$1"; sleep "${WAIT:-1}"; }
 
 # The whole flow is driven with the keyboard, so it does not depend on window size or position:
 # the library focuses its list with the first collection selected, Enter opens a collection,
@@ -76,7 +80,16 @@ WAIT=8 key Return               # Vol. 1 -> PDF reader
 shot 08-reader-pdf
 key Left; key Left              # right-to-left: Left goes forward
 shot 09-reader-pdf-next-spread
-WAIT=2 key Escape
+WAIT=2 key Escape               # back to the collection
+key Escape                      # back to the library
+# Import a folder as a collection: Tab reaches "Import folder…" and Enter opens the GTK folder
+# dialog. Typing a path opens its location entry; Enter selects the typed folder — or only opens
+# it, on some GTK versions, in which case a second Enter selects the current folder.
+key Tab Tab Tab; WAIT=3 key Return
+[[ -n "$(dialog)" ]] || { echo "The folder dialog did not open"; shot 10-no-dialog; exit 1; }
+dtype "$(cd "$samples" && pwd)/Lantern Import"; WAIT=3 dkey Return
+[[ -z "$(dialog)" ]] || WAIT=3 dkey Return
+shot 10-library-imported
 
 # Close the window the way a user would (WM close request); the app must exit cleanly.
 wmctrl -i -c "$(win)"
@@ -104,4 +117,7 @@ grep -q '"savedPosition": "1[2-9]:' "$library" \
 # The bookmark set in the EPUB reader must have been saved with the first words of its page.
 grep -q '"excerpt": "[A-Za-z]' "$library" \
     || { echo "The bookmark was not saved:"; grep -n -e excerpt -e bookmarks "$library"; exit 1; }
+# The folder chosen in the system dialog must have become a collection.
+grep -q '"title": "Lantern Import"' "$library" \
+    || { echo "The folder was not imported as a collection:"; grep -n '"title"' "$library"; exit 1; }
 echo "Smoke test passed"

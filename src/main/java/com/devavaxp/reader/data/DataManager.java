@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
@@ -19,6 +20,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
@@ -251,6 +253,14 @@ public class DataManager {
         return data.collections.stream().filter(c -> Objects.equals(c.getId(), id)).findFirst();
     }
 
+    /** First collection (in display order) whose title matches, ignoring case and surrounding spaces. */
+    public Optional<BookCollection> findCollectionByTitle(String title) {
+        String wanted = title == null ? "" : title.trim();
+        return data.collections.stream()
+                .filter(c -> c.getTitle() != null && c.getTitle().trim().equalsIgnoreCase(wanted))
+                .findFirst();
+    }
+
     /** Appends the collection at the end of the (unpinned) list and saves. */
     public void addCollection(BookCollection collection) {
         collection.setPinned(false);
@@ -366,10 +376,19 @@ public class DataManager {
     }
 
     public boolean hasBookWithPath(String collectionId, String path) {
-        Path wanted = Paths.get(path).toAbsolutePath().normalize();
-        return getBooksOf(collectionId).stream()
-                .anyMatch(b -> b.getFilePath() != null
-                        && Paths.get(b.getFilePath()).toAbsolutePath().normalize().equals(wanted));
+        Path wanted = normalizedPath(path);
+        return wanted != null && getBooksOf(collectionId).stream()
+                .anyMatch(b -> wanted.equals(normalizedPath(b.getFilePath())));
+    }
+
+    /** Absolute, normalized form of a stored path; null when it is missing or not valid on this system. */
+    private static Path normalizedPath(String path) {
+        if (path == null || path.isBlank()) return null;
+        try {
+            return Paths.get(path).toAbsolutePath().normalize();
+        } catch (InvalidPathException e) {
+            return null;
+        }
     }
 
     /** Appends the book to its collection and saves. */
@@ -385,6 +404,62 @@ public class DataManager {
         data.books.addAll(books);
         normalizeOrder(books.get(0).getCollectionId());
         save();
+    }
+
+    /**
+     * Adds files as new volumes at the end of the collection, in the given order, skipping
+     * the ones the collection already has. Returns the books that were added.
+     */
+    public List<Book> addVolumes(BookCollection collection, List<Path> files) {
+        List<Book> added = appendVolumes(collection, files);
+        if (!added.isEmpty()) save();
+        return added;
+    }
+
+    /**
+     * Outcome of {@link #importFolder}: the collection that received the books, whether it
+     * was created by this import, the books added and how many files were already there.
+     */
+    public record FolderImport(BookCollection collection, boolean created, List<Book> added, int alreadyThere) {
+    }
+
+    /**
+     * Imports book files as the volumes of the collection called {@code name}: an existing
+     * collection with that title (ignoring case) receives the files it does not have yet,
+     * otherwise a new collection is created at the end of the library. Files are added in
+     * the given order after the current volumes, so importing the same folder again after
+     * new volumes arrived only adds those.
+     */
+    public FolderImport importFolder(String name, List<Path> files) {
+        BookCollection collection = findCollectionByTitle(name).orElse(null);
+        boolean created = collection == null;
+        if (created) {
+            collection = new BookCollection(name.trim());
+            collection.setOrder(data.collections.size() + 1);
+            data.collections.add(collection);
+            normalizeCollectionOrder(data.collections);
+        }
+        List<Book> added = appendVolumes(collection, files);
+        save();
+        return new FolderImport(collection, created, added, files.size() - added.size());
+    }
+
+    private List<Book> appendVolumes(BookCollection collection, List<Path> files) {
+        Set<Path> known = new HashSet<>();
+        for (Book b : getBooksOf(collection.getId())) {
+            Path p = normalizedPath(b.getFilePath());
+            if (p != null) known.add(p);
+        }
+        List<Book> added = new ArrayList<>();
+        int order = nextOrder(collection.getId());
+        for (Path f : files) {
+            Path path = f.toAbsolutePath().normalize();
+            if (!known.add(path)) continue;   // already in the collection, or twice in this batch
+            added.add(new Book(collection.getId(), TextUtils.titleFromFile(path.toFile()), path.toString(), order++));
+        }
+        data.books.addAll(added);
+        normalizeOrder(collection.getId());
+        return added;
     }
 
     public void deleteBook(Book book) {

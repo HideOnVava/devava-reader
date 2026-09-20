@@ -217,6 +217,12 @@
     -fx-font-size: 14px;
 }
 
+/* Files or folders being dragged over the list */
+.list:drop-target {
+    -fx-border-color: -accent;
+    -fx-background-color: -accent-soft;
+}
+
 .row-title {
     -fx-font-size: 14px;
     -fx-font-weight: bold;

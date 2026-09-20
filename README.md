@@ -38,10 +38,13 @@ On that page, under **Assets**, pick the file for your system:
 
 ### First steps
 
-1. **Create a collection** — type a name (for example the series) and click *Create collection*.
+1. **Create a collection** — the quick way: click *Import folder…* (or drop a folder onto the
+   library) and pick the folder of a series; the collection takes the folder's name and every
+   `.epub` / `.pdf` inside becomes a volume. Or type a name and click *Create collection* to
+   start with an empty one.
 2. **Add books** — open the collection and click *＋ Add books*, or drag `.epub` / `.pdf` files
-   onto the list. Volumes are sorted naturally on import (*Volume 2* before *Volume 10*) and you
-   can reorder them with the arrow buttons.
+   (or folders) onto the list. Volumes are sorted naturally on import (*Volume 2* before
+   *Volume 10*) and you can reorder them with the arrow buttons.
 3. **Read** — double-click a volume. Turn pages with `→` / `←`, the mouse wheel or by clicking
    the page edges; press `Esc` to go back. Progress is saved as you read, and the *Continue
    reading* card on the first screen takes you straight back to the last book.
@@ -75,6 +78,9 @@ checksums.
 
 - **Collections** of volumes with custom ordering, progress bars and read/unread status. A
   collection can mix `.epub` and `.pdf` volumes.
+- **Import a folder as a collection**: one click (or one drop) turns the folder of a series
+  into a collection with all its volumes in order; drop it again later and only the new
+  volumes are added.
 - **Library search and filters**: find collections by name, filter them by the format of their
   volumes (all / EPUB only / PDF only), pin favourites so they always stay on top, and reorder
   collections manually.
@@ -92,8 +98,8 @@ checksums.
   accents and case do not matter.
 - **Light / sepia / dark themes** shared by both readers.
 - **"Continue reading"** card on the main screen.
-- Drag & drop `.epub` / `.pdf` files onto a collection; natural sort on import (Volume 2 before
-  Volume 10).
+- Drag & drop `.epub` / `.pdf` files or folders onto a collection, and folders onto the
+  library; natural sort on import (Volume 2 before Volume 10).
 - Everything is stored in a single JSON file that the app creates on first launch.
 
 ## Keyboard shortcuts
@@ -163,9 +169,19 @@ that format; empty or mixed collections only appear under *All*), right-click a 
 the arrow buttons move a collection within its group. Moving is only available while the full,
 unfiltered list is shown, so that a position always means the real position.
 
+**Importing a folder**: *Import folder…* (or dropping one or more folders anywhere on the
+library) creates a collection named after each folder, with the `.epub` and `.pdf` files
+inside it as volumes in shelf order — the files of the folder first, in natural order, then
+each subfolder in turn (subfolders are searched up to eight levels deep; hidden entries are
+skipped). If a collection with that name already exists, the files it does not have yet are
+added at the end instead, so dropping the same folder again after new volumes arrive adds just
+those. Folders with no books, and folders far too large to be a series, are reported and left
+alone. The files themselves are never moved or copied.
+
 In a collection: `Enter` or double-click opens the reader (the EPUB or the PDF one, depending
 on the volume), `F2` renames, `Del` removes the volume, `Ctrl+↑` / `Ctrl+↓` reorder, and
-`.epub` / `.pdf` files can be dropped onto the list. PDF volumes show a small **PDF** badge.
+`.epub` / `.pdf` files — or folders, whose books are added — can be dropped onto the list. PDF
+volumes show a small **PDF** badge.
 
 ## Where the data lives
 
@@ -387,9 +403,9 @@ uploaded from a developer's PC. To publish, for example, version 1.3.0:
    and macOS Intel — each one checks that the tag matches `pom.xml`, runs the tests, builds its
    files with `packaging/release.ps1` or `packaging/release.sh`, and then **smoke-tests the
    result on a real desktop session**: the packaged app is installed, started with a generated
-   sample library (`tools/samples`), driven through the library, the EPUB reader and the PDF
-   reader with real keyboard and mouse events (`tools/smoke`), and closed; the screenshots and
-   the app log are kept as workflow artifacts. A final job gathers everything, computes the
+   sample library (`tools/samples`), driven through the library, the EPUB reader, the PDF
+   reader and the system folder dialog with real keyboard events (`tools/smoke`), and closed;
+   the screenshots and the app log are kept as workflow artifacts. A final job gathers everything, computes the
    SHA-256 checksums, generates the notes from the changelog (`packaging/release-notes.ps1`)
    and publishes the release. It appears under **Releases** after about ten minutes.
 
@@ -405,8 +421,9 @@ output in `dist/release` is what the workflow uploads.
 com.devavaxp.reader
 ├── ReaderApp / Launcher        startup, single window and window preferences
 ├── Navigator                   screen switching on a single Scene; picks the reader by format
-├── CollectionsController       library: search, filters, pinning, ordering, "continue reading"
-├── VolumesController           volumes of a collection: import (.epub/.pdf), order, mark, read
+├── CollectionsController       library: search, filters, pinning, ordering, folder import,
+│                               "continue reading"
+├── VolumesController           volumes of a collection: import (files/folders), order, mark, read
 ├── ReaderController            EPUB reader: chapters, keyboard/mouse, contents, settings, progress
 ├── PdfReaderController         fixed-page reader: spreads, direction, fit, background rendering
 ├── ReaderSidePanel             Contents | Bookmarks | Search tabs of the readers' side panel
@@ -415,8 +432,9 @@ com.devavaxp.reader
 ├── Dialogs                     dialogs styled like the app
 ├── bridge/JsBridge             object exposed to reader.js (link clicks, events)
 ├── data/DataManager            JSON persistence (Gson), atomic and fault-tolerant, legacy import,
-│                               collection order/pinning and format queries
+│                               collection order/pinning, format queries, folder import
 ├── data/AppDirectories         per-system Documents / library folder and shortcut key name
+├── data/BookFolder             books inside a folder, in shelf order, for importing
 ├── data/TextUtils              natural order, titles, plurals
 ├── epub/EpubExtractor          safe ZIP extraction into the temp cache
 ├── epub/EpubParser             container.xml → OPF (spine, manifest) → nav / NCX (contents)

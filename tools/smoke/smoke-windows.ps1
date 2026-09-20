@@ -27,6 +27,7 @@ using System;
 using System.Runtime.InteropServices;
 public class Smoke {
     [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern IntPtr FindWindow(string cls, string title);
     [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
     [DllImport("user32.dll")] public static extern void mouse_event(uint flags, uint dx, uint dy, uint data, UIntPtr extra);
     [DllImport("dwmapi.dll")] public static extern int DwmGetWindowAttribute(IntPtr hwnd, int attr, out RECT rect, int size);
@@ -76,6 +77,18 @@ function Key($keys, $wait = 1) {
     $h = Window; [Smoke]::SetForegroundWindow($h) | Out-Null; Start-Sleep -Milliseconds 200
     [System.Windows.Forms.SendKeys]::SendWait($keys); Start-Sleep -Seconds $wait
 }
+# Text typed literally with SendKeys: its special characters must be wrapped in braces.
+function Literal($text) { return [regex]::Replace($text, '[+^%~(){}\[\]]', '{$0}') }
+# The system folder dialog is a window of its own (the main window is disabled while it is up),
+# so keys for it must be sent with the dialog in the foreground.
+$dialogTitle = "Import a folder as a collection"
+function Dialog { return [Smoke]::FindWindow([NullString]::Value, $dialogTitle) }   # $null would mean class ""
+function DialogKey($keys, $wait = 1) {
+    $d = Dialog
+    if ($d -eq [IntPtr]::Zero) { throw "The folder dialog is not open" }
+    [Smoke]::SetForegroundWindow($d) | Out-Null; Start-Sleep -Milliseconds 300
+    [System.Windows.Forms.SendKeys]::SendWait($keys); Start-Sleep -Seconds $wait
+}
 
 Window | Out-Null; Start-Sleep -Seconds 4
 # The whole flow is driven with the keyboard, so it does not depend on window size or position:
@@ -103,7 +116,16 @@ Key "{ENTER}" 8                     # Vol. 1 -> PDF reader
 Shot "08-reader-pdf"
 Key "{LEFT}"; Key "{LEFT}"          # right-to-left: Left goes forward
 Shot "09-reader-pdf-next-spread"
-Key "{ESC}" 2
+Key "{ESC}" 2                       # back to the collection
+Key "{ESC}"                         # back to the library
+# Import a folder as a collection: Tab reaches "Import folder…", Enter opens the system folder
+# dialog, whose folder field has the focus; a typed path opens that folder and Enter selects it.
+Key "{TAB}{TAB}{TAB}"; Key "{ENTER}" 3
+for ($i = 0; $i -lt 10 -and (Dialog) -eq [IntPtr]::Zero; $i++) { Start-Sleep -Seconds 1 }
+DialogKey (Literal (Join-Path (Resolve-Path $Samples).Path "Lantern Import")); DialogKey "{ENTER}" 2
+DialogKey "{ENTER}" 3
+if ((Dialog) -ne [IntPtr]::Zero) { Shot "10-dialog-still-open"; throw "The folder dialog did not close" }
+Shot "10-library-imported"
 
 $windowProc = Get-Process -Name "Devava Reader" | Where-Object { $_.MainWindowTitle -eq "Devava Reader" } | Select-Object -First 1
 $windowProc.CloseMainWindow() | Out-Null
@@ -117,5 +139,8 @@ if (-not ((Get-Content $library -Raw) -match '"savedPosition": "1[2-9]:')) {
 }
 if (-not ((Get-Content $library -Raw) -match '"excerpt": "[A-Za-z]')) {
     Get-Content $library | Select-String "excerpt|bookmarks"; throw "The bookmark was not saved"
+}
+if (-not ((Get-Content $library -Raw) -match '"title": "Lantern Import"')) {
+    Get-Content $library | Select-String '"title"'; throw "The folder was not imported as a collection"
 }
 Write-Host "Smoke test passed"

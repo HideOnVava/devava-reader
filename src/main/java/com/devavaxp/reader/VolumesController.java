@@ -1,13 +1,16 @@
 package com.devavaxp.reader;
 
 import com.devavaxp.reader.data.AppDirectories;
+import com.devavaxp.reader.data.BookFolder;
 import com.devavaxp.reader.data.DataManager;
 import com.devavaxp.reader.data.TextUtils;
 import com.devavaxp.reader.model.Book;
 import com.devavaxp.reader.model.BookCollection;
 import com.devavaxp.reader.model.Preferences;
+import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.css.PseudoClass;
 import javafx.fxml.FXML;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
@@ -31,16 +34,20 @@ import javafx.stage.FileChooser;
 
 import java.io.File;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 
 /**
  * Collection screen: import volumes, reorder them, mark them and open the reader.
+ * Files and folders can be dropped on the list; a folder contributes every book inside it.
  */
 public class VolumesController implements Navigator.Screen {
+
+    /** Pseudo-class of the list while files are dragged over it (see styles.css). */
+    private static final PseudoClass DROP_TARGET = PseudoClass.getPseudoClass("drop-target");
 
     @FXML private Label collectionTitle;
     @FXML private Label summaryLabel;
@@ -67,7 +74,7 @@ public class VolumesController implements Navigator.Screen {
         this.collection = collection;
 
         bookList.setCellFactory(list -> new BookCell());
-        bookList.setPlaceholder(new Label("No volumes yet. Add .epub or .pdf files, or drop them here."));
+        bookList.setPlaceholder(new Label("No volumes yet. Add .epub or .pdf files, or drop files or folders here."));
         bookList.getSelectionModel().selectedItemProperty().addListener((obs, a, b) -> updateButtons());
         bookList.setOnMouseClicked(ev -> {
             if (ev.getButton() == MouseButton.PRIMARY && ev.getClickCount() == 2) openSelectedInReader();
@@ -78,6 +85,7 @@ public class VolumesController implements Navigator.Screen {
         moveUpButton.setTooltip(new Tooltip("Move up (" + mod + "+↑)"));
         moveDownButton.setTooltip(new Tooltip("Move down (" + mod + "+↓)"));
         bookList.setOnDragOver(this::onDragOver);
+        bookList.setOnDragExited(ev -> bookList.pseudoClassStateChanged(DROP_TARGET, false));
         bookList.setOnDragDropped(this::onDragDropped);
 
         collectionTitle.setText(collection.getTitle());
@@ -157,30 +165,32 @@ public class VolumesController implements Navigator.Screen {
     }
 
     private void onDragOver(DragEvent ev) {
-        if (ev.getDragboard().hasFiles() && ev.getDragboard().getFiles().stream().anyMatch(VolumesController::isSupportedBook)) {
+        if (ev.getDragboard().hasFiles() && ev.getDragboard().getFiles().stream().anyMatch(VolumesController::isImportable)) {
             ev.acceptTransferModes(TransferMode.COPY);
+            bookList.pseudoClassStateChanged(DROP_TARGET, true);
         }
         ev.consume();
     }
 
     private void onDragDropped(DragEvent ev) {
-        boolean ok = false;
-        if (ev.getDragboard().hasFiles()) {
-            List<File> dropped = ev.getDragboard().getFiles().stream().filter(VolumesController::isSupportedBook).toList();
-            if (!dropped.isEmpty()) {
-                importFiles(dropped);
-                ok = true;
-            }
-        }
-        ev.setDropCompleted(ok);
+        bookList.pseudoClassStateChanged(DROP_TARGET, false);
+        List<File> dropped = ev.getDragboard().hasFiles()
+                ? ev.getDragboard().getFiles().stream().filter(VolumesController::isImportable).toList()
+                : List.of();
+        ev.setDropCompleted(!dropped.isEmpty());
         ev.consume();
+        // Import once the drop has been acknowledged: dialogs must not open mid-drag.
+        if (!dropped.isEmpty()) Platform.runLater(() -> importFiles(dropped));
     }
 
     /** Formats the app can open: EPUB (reflowable) and PDF (fixed pages). */
     private static boolean isSupportedBook(File f) {
-        if (f == null || !f.isFile()) return false;
-        String name = f.getName().toLowerCase(Locale.ROOT);
-        return name.endsWith(".epub") || name.endsWith(".pdf");
+        return f != null && f.isFile() && BookFolder.isBook(f.toPath());
+    }
+
+    /** What can be dropped on the list: book files and folders (searched for books). */
+    private static boolean isImportable(File f) {
+        return isSupportedBook(f) || (f != null && f.isDirectory());
     }
 
     // ------------------------------------------------------------------
@@ -206,31 +216,38 @@ public class VolumesController implements Navigator.Screen {
         importFiles(chosen);
     }
 
-    /** Imports the files in natural order (Volume 2 before Volume 10), skipping duplicates. */
+    /**
+     * Imports the files, and the books inside the folders, in shelf order (Volume 2 before
+     * Volume 10, the files of a folder before its subfolders), skipping duplicates.
+     */
     private void importFiles(List<File> files) {
-        List<File> sorted = new ArrayList<>(files);
-        sorted.sort(Comparator.comparing(File::getName, TextUtils::compareNatural));
-        List<Book> added = new ArrayList<>();
-        int order = dataManager.nextOrder(collection.getId());
-        int duplicates = 0;
-        for (File f : sorted) {
-            if (!isSupportedBook(f)) continue;
-            if (dataManager.hasBookWithPath(collection.getId(), f.getAbsolutePath())) {
-                duplicates++;
-                continue;
+        List<Path> paths = new ArrayList<>();
+        List<String> tooLarge = new ArrayList<>();
+        for (File f : files) {
+            if (f.isDirectory()) {
+                BookFolder.Scan scan = BookFolder.scan(f.toPath());
+                if (scan.complete()) paths.addAll(scan.books());
+                else tooLarge.add(BookFolder.nameOf(f.toPath()));
+            } else if (isSupportedBook(f)) {
+                paths.add(f.toPath().toAbsolutePath().normalize());
             }
-            added.add(new Book(collection.getId(), TextUtils.titleFromFile(f), f.getAbsolutePath(), order++));
         }
-        dataManager.addBooks(added);
+        paths.sort(BookFolder::compareImportOrder);
+        List<Book> added = dataManager.addVolumes(collection, paths);
         reload();
         if (!added.isEmpty()) {
             Book last = added.get(added.size() - 1);
             bookList.getSelectionModel().select(last);
             bookList.scrollTo(last);
         }
-        if (duplicates > 0 && added.isEmpty()) {
-            Dialogs.info(navigator.getStage(), "Nothing to add",
-                    duplicates == 1 ? "That volume was already in the collection." : "Those volumes were already in the collection.");
+        if (!tooLarge.isEmpty()) {
+            Dialogs.info(navigator.getStage(), "Folder not imported",
+                    "\"" + String.join("\", \"", tooLarge) + "\" holds too many files and folders to be imported;"
+                            + " drop the folder of a single series instead.");
+        } else if (added.isEmpty()) {
+            Dialogs.info(navigator.getStage(), "Nothing to add", paths.isEmpty()
+                    ? "No .epub or .pdf files were found."
+                    : paths.size() == 1 ? "That volume was already in the collection." : "Those volumes were already in the collection.");
         }
     }
 
