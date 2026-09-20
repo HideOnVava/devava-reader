@@ -34,6 +34,8 @@ sleep 6
 se() { osascript -e 'tell application "System Events" to tell process "Devava Reader"' "$@" -e 'end tell'; }
 shot() { screencapture -x "$out/$1.png"; echo "screenshot: $1"; }
 key() { se -e 'set frontmost to true' -e "key code $1" >/dev/null; sleep "${WAIT:-1}"; }
+cmd_key() { se -e 'set frontmost to true' -e "keystroke \"$1\" using command down" >/dev/null; sleep "${WAIT:-1}"; }
+type_() { se -e 'set frontmost to true' -e "keystroke \"$1\"" >/dev/null; sleep "${WAIT:-1}"; }
 
 automation=true
 if ! se -e 'set frontmost to true' >/dev/null 2>&1; then
@@ -54,14 +56,17 @@ if $automation; then
     key 11                          # B: bookmark this page
     key 17; key 48                  # T then Tab: side panel on the bookmarks tab
     shot 05-reader-epub-bookmarks
+    cmd_key f; type_ ferryman       # search inside the book
+    WAIT=3 key 36                   # jump to the first hit (another chapter)
+    shot 06-reader-epub-search
     key 53; WAIT=2 key 53           # close the panel, back to the collection
     key 53                          # back to the library
     key 125; key 36                 # "Sample Manga"
-    shot 06-collection-manga
+    shot 07-collection-manga
     WAIT=8 key 36                   # Vol. 1 -> PDF reader
-    shot 07-reader-pdf
+    shot 08-reader-pdf
     key 123; key 123                # right-to-left: Left goes forward
-    shot 08-reader-pdf-next-spread
+    shot 09-reader-pdf-next-spread
     WAIT=4 key 53                   # leave the reader and let its background work finish
 fi
 

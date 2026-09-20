@@ -435,6 +435,35 @@
   }
 
   // ------------------------------------------------------------------
+  // Search: the same normalization as BookSearch in Java (lower case, no diacritics,
+  // plain quotes and dashes), one output character per input character or none.
+  // ------------------------------------------------------------------
+
+  function normalizeForSearch(text) {
+    var out = '';
+    for (var i = 0; i < text.length; i++) {
+      var c = text.charAt(i);
+      var code = c.charCodeAt(0);
+      if (code >= 0x300 && code <= 0x36f) continue; // combining mark
+      if (code > 127 && typeof c.normalize === 'function') {
+        var d = c.normalize('NFD');
+        if (d.length) c = d.charAt(0);
+        code = c.charCodeAt(0);
+        if (code >= 0x300 && code <= 0x36f) continue;
+      }
+      switch (c) {
+        case '\u2018': case '\u2019': case '\u201A': case '\u2032': case '\u00B4': case '`': c = "'"; break;
+        case '\u201C': case '\u201D': case '\u201E': case '\u2033': case '\u00AB': case '\u00BB': c = '"'; break;
+        case '\u2010': case '\u2011': case '\u2012': case '\u2013': case '\u2014': c = '-'; break;
+        case '\u00A0': c = ' '; break;
+        default: c = c.toLowerCase();
+      }
+      out += c;
+    }
+    return out;
+  }
+
+  // ------------------------------------------------------------------
   // Public API (used from Java)
   // ------------------------------------------------------------------
 
@@ -499,6 +528,87 @@
     remeasure: function () {
       relayout(true);
       return stateJson();
+    },
+    /**
+     * Goes to an occurrence of `term` (the text of a search hit) and selects it. Among the
+     * occurrences in the document, the one whose surroundings best match `before` and
+     * `after` (the hit's context) is chosen, so the same hit is found again even though the
+     * text was searched outside the browser. Returns false when the term is not found.
+     */
+    goToMatch: function (term, before, after) {
+      var b = document.body;
+      if (!b) return false;
+      var needle = normalizeForSearch(String(term || ''));
+      if (!needle) return false;
+      var ctxBefore = normalizeForSearch(String(before || ''));
+      var ctxAfter = normalizeForSearch(String(after || ''));
+
+      // Concatenate the text nodes (like ChapterText does in Java), remembering where each
+      // normalized character comes from.
+      var walker = document.createTreeWalker(b, NodeFilter.SHOW_TEXT, null, false);
+      var hay = '';
+      var nodes = [];
+      var offsets = [];
+      var n;
+      while ((n = walker.nextNode())) {
+        var skip = false;
+        for (var p = n.parentNode; p && p !== b; p = p.parentNode) {
+          if (p.nodeType === 1 && /^(script|style)$/i.test(p.tagName || '')) { skip = true; break; }
+        }
+        if (skip) continue;
+        var value = n.nodeValue || '';
+        for (var i = 0; i < value.length; i++) {
+          var c = normalizeForSearch(value.charAt(i)).charAt(0);
+          if (!c) continue;
+          if (/\s/.test(c)) {
+            // Whitespace runs count as one space, as in the text searched in Java.
+            if (!hay.length || hay.charAt(hay.length - 1) === ' ') continue;
+            c = ' ';
+          }
+          hay += c;
+          nodes.push(n);
+          offsets.push(i);
+        }
+      }
+
+      var best = -1;
+      var bestScore = -1;
+      var at = hay.indexOf(needle);
+      while (at >= 0) {
+        var score = 0;
+        var k;
+        for (k = 1; k <= ctxBefore.length && at - k >= 0; k++) {
+          if (hay.charAt(at - k) !== ctxBefore.charAt(ctxBefore.length - k)) break;
+          score++;
+        }
+        for (k = 0; k < ctxAfter.length && at + needle.length + k < hay.length; k++) {
+          if (hay.charAt(at + needle.length + k) !== ctxAfter.charAt(k)) break;
+          score++;
+        }
+        if (score > bestScore) { bestScore = score; best = at; }
+        at = hay.indexOf(needle, at + 1);
+      }
+      if (best < 0) return false;
+
+      var range = document.createRange();
+      var last = best + needle.length - 1;
+      try {
+        range.setStart(nodes[best], offsets[best]);
+        range.setEnd(nodes[last], offsets[last] + 1);
+      } catch (e) {
+        return false;
+      }
+      var v = withoutTransform(function () { return viewOfRect(rectOfRange(range)); });
+      if (v < 0) return false;
+      goTo(v);
+      try {
+        var sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+      } catch (e2) {
+        // The selection is only a visual aid.
+      }
+      return true;
     },
     /**
      * First words of the text shown in the current view (for bookmarks), at most maxChars.

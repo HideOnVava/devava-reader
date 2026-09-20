@@ -4,6 +4,7 @@
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.ListView?>
+<?import javafx.scene.control.TextField?>
 <?import javafx.scene.control.ProgressBar?>
 <?import javafx.scene.control.Tooltip?>
 <?import javafx.scene.layout.BorderPane?>
@@ -45,7 +46,7 @@
             </Button>
             <Button fx:id="tocButton" text="☰" styleClass="icon, flat" onAction="#onToggleToc" focusTraversable="false">
                 <tooltip>
-                    <Tooltip text="Contents and bookmarks (T)"/>
+                    <Tooltip text="Contents, bookmarks and search (T)"/>
                 </tooltip>
             </Button>
             <Button fx:id="settingsButton" text="Aa" styleClass="icon, flat" onAction="#onSettings" focusTraversable="false">
@@ -74,6 +75,11 @@
             <ListView fx:id="tocList" VBox.vgrow="ALWAYS" styleClass="toc-list"/>
             <ListView fx:id="bookmarkList" VBox.vgrow="ALWAYS" styleClass="toc-list, bookmark-list"
                       managed="false" visible="false"/>
+            <VBox fx:id="searchBox" spacing="6" VBox.vgrow="ALWAYS" managed="false" visible="false">
+                <TextField fx:id="searchField" promptText="Search in this book…" styleClass="search-field"/>
+                <ListView fx:id="searchList" VBox.vgrow="ALWAYS" styleClass="toc-list, search-list"/>
+                <Label fx:id="searchStatus" styleClass="search-status" wrapText="true"/>
+            </VBox>
         </VBox>
     </left>
 

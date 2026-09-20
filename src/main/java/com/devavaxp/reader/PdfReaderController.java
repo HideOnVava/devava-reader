@@ -151,7 +151,9 @@ public class PdfReaderController implements Navigator.Screen {
         applyUiTheme();
         setupInput();
         setupToc();
-        sidePanel = new ReaderSidePanel(tocPanel, panelTabs, tocList, bookmarkList, () -> scroller.requestFocus());
+        sidePanel = new ReaderSidePanel(tocPanel, panelTabs, () -> scroller.requestFocus(),
+                new ReaderSidePanel.TabView(ReaderSidePanel.Tab.CONTENTS, tocList, tocList),
+                new ReaderSidePanel.TabView(ReaderSidePanel.Tab.BOOKMARKS, bookmarkList, bookmarkList));
         bookmarks = new BookmarksPane(book, bookmarkList, new BookmarksPane.Host() {
             @Override public String describe(Bookmark b) { return describeBookmark(b); }
             @Override public void goTo(Bookmark b) { goToBookmark(b); }
@@ -193,7 +195,7 @@ public class PdfReaderController implements Navigator.Screen {
         ready = true;
         loadingLabel.setVisible(false);
         tocList.getItems().setAll(source.outline());
-        sidePanel.setContentsAvailable(!source.outline().isEmpty());
+        sidePanel.setAvailable(ReaderSidePanel.Tab.CONTENTS, !source.outline().isEmpty());
         rebuildSpreads();
 
         int startPage = Math.min(book.getSavedChapter(), source.pageCount() - 1);

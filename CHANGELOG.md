@@ -5,6 +5,15 @@ All notable changes to Devava Reader are documented here. The format follows
 [Semantic Versioning](https://semver.org/). Each release on GitHub takes its notes from
 the matching section of this file.
 
+## [1.4.0] - 2026-09-19
+
+### Added
+- **Search inside the book** (EPUB): `Ctrl+F` (`⌘F` on macOS) opens the side panel on a
+  new *Search* tab. Results list the chapter and the passage with the match highlighted;
+  `Enter` or a click jumps to that exact occurrence and selects it on the page, and the panel
+  stays open so the next result is one key away. Matching ignores case and accents
+  ("cancion" finds "canción") and treats typographic quotes like plain ones.
+
 ## [1.3.0] - 2026-09-19
 
 ### Added
@@ -72,6 +81,7 @@ Initial version, not published as a release.
 - Library stored in a single JSON file under `Documents\Devava Reader`, created
   automatically; the previous Spanish library file is imported on first launch.
 
+[1.4.0]: https://github.com/HideOnVava/devava-reader/releases/tag/v1.4.0
 [1.3.0]: https://github.com/HideOnVava/devava-reader/releases/tag/v1.3.0
 [1.2.0]: https://github.com/HideOnVava/devava-reader/releases/tag/v1.2.0
 [1.1.0]: https://github.com/HideOnVava/devava-reader/releases/tag/v1.1.0

@@ -1,51 +1,77 @@
 package com.devavaxp.reader;
 
+import javafx.scene.Node;
 import javafx.scene.control.ListView;
+import javafx.scene.control.TextInputControl;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
- * The side panel of both readers: a Contents | Bookmarks switch above two lists, only one
- * of which is shown. The Contents tab is disabled for books without a table of contents,
- * in which case the panel opens on the bookmarks.
+ * The side panel of both readers: a row of tabs (Contents | Bookmarks | Search…) above
+ * one view per tab, only one of which is shown. A tab can be marked unavailable (a book
+ * without a table of contents has no Contents), in which case the panel opens on the next
+ * one and the switch cycles over the available tabs only.
  */
 final class ReaderSidePanel {
 
-    enum Tab { CONTENTS, BOOKMARKS }
+    enum Tab {
+        CONTENTS("contents", "Contents"),
+        BOOKMARKS("bookmarks", "Bookmarks"),
+        SEARCH("search", "Search");
 
-    private static final String CONTENTS = "contents";
-    private static final String BOOKMARKS = "bookmarks";
+        final String value;
+        final String label;
+
+        Tab(String value, String label) {
+            this.value = value;
+            this.label = label;
+        }
+    }
+
+    /** A tab: its view and the node that takes the focus when the tab is shown. */
+    record TabView(Tab tab, Node view, Node focusTarget) {
+    }
 
     private final VBox panel;
     private final HBox tabs;
-    private final ListView<?> contentsList;
-    private final ListView<?> bookmarkList;
+    private final List<TabView> views;
     private final Runnable onHide;
-    private Tab tab = Tab.CONTENTS;
-    private boolean contentsAvailable = true;
+    private final List<Tab> unavailable = new ArrayList<>();
+    private Tab tab;
 
     /**
      * @param onHide gives the focus back to the reading area when the panel closes
      */
-    ReaderSidePanel(VBox panel, HBox tabsContainer, ListView<?> contentsList, ListView<?> bookmarkList, Runnable onHide) {
+    ReaderSidePanel(VBox panel, HBox tabsContainer, Runnable onHide, TabView... tabViews) {
         this.panel = panel;
-        this.contentsList = contentsList;
-        this.bookmarkList = bookmarkList;
+        this.views = List.of(tabViews);
         this.onHide = onHide;
-        this.tabs = UiControls.segmented(CONTENTS, value -> switchTo(BOOKMARKS.equals(value) ? Tab.BOOKMARKS : Tab.CONTENTS),
-                new String[][]{{CONTENTS, "Contents"}, {BOOKMARKS, "Bookmarks"}});
+        this.tab = views.get(0).tab();
+        String[][] options = new String[views.size()][];
+        for (int i = 0; i < views.size(); i++) {
+            options[i] = new String[]{views.get(i).tab().value, views.get(i).tab().label};
+        }
+        this.tabs = UiControls.segmented(tab.value, value -> {
+            for (TabView v : views) {
+                if (v.tab().value.equals(value)) switchTo(v.tab());
+            }
+        }, options);
         this.tabs.setMaxWidth(Double.MAX_VALUE);
         tabsContainer.getChildren().setAll(tabs);
         HBox.setHgrow(tabs, Priority.ALWAYS);
         applyTab();
     }
 
-    /** Books without a table of contents keep the Bookmarks tab only. */
-    void setContentsAvailable(boolean available) {
-        contentsAvailable = available;
-        UiControls.setEnabled(tabs, CONTENTS, available);
-        if (!available && tab == Tab.CONTENTS) switchTo(Tab.BOOKMARKS);
+    /** Marks a tab as (un)available; an unavailable current tab gives way to the next one. */
+    void setAvailable(Tab which, boolean available) {
+        unavailable.remove(which);
+        if (!available) unavailable.add(which);
+        UiControls.setEnabled(tabs, which.value, available);
+        if (!available && tab == which) switchTo(nextAvailable(which));
     }
 
     boolean isVisible() {
@@ -56,12 +82,11 @@ final class ReaderSidePanel {
         return tab;
     }
 
-    /** Shows the panel on the given tab (or on Bookmarks when there are no contents). */
+    /** Shows the panel on the given tab, or on the next available one. */
     void show(Tab wanted) {
-        Tab effective = wanted == Tab.CONTENTS && !contentsAvailable ? Tab.BOOKMARKS : wanted;
         panel.setVisible(true);
         panel.setManaged(true);
-        switchTo(effective);
+        switchTo(unavailable.contains(wanted) ? nextAvailable(wanted) : wanted);
     }
 
     void hide() {
@@ -77,35 +102,50 @@ final class ReaderSidePanel {
 
     void switchTo(Tab wanted) {
         tab = wanted;
-        UiControls.select(tabs, wanted == Tab.BOOKMARKS ? BOOKMARKS : CONTENTS);
+        UiControls.select(tabs, wanted.value);
         applyTab();
-        if (isVisible()) focusList();
+        if (isVisible()) focusCurrent();
     }
 
-    /** The other tab, when it is available (Tab key inside the panel). */
+    /** The next available tab, cycling (the Tab key inside the panel). */
     void switchToOther() {
-        if (tab == Tab.BOOKMARKS && contentsAvailable) switchTo(Tab.CONTENTS);
-        else if (tab == Tab.CONTENTS) switchTo(Tab.BOOKMARKS);
+        switchTo(nextAvailable(tab));
     }
 
-    /** Focuses the visible list and makes sure a row is selected, so that keys act on it. */
-    private void focusList() {
-        ListView<?> list = currentList();
-        if (list.getSelectionModel().isEmpty() && !list.getItems().isEmpty()) {
-            list.getSelectionModel().selectFirst();
+    private Tab nextAvailable(Tab from) {
+        int start = indexOf(from);
+        for (int step = 1; step <= views.size(); step++) {
+            Tab candidate = views.get((start + step) % views.size()).tab();
+            if (!unavailable.contains(candidate)) return candidate;
         }
-        list.requestFocus();
+        return from;
     }
 
-    ListView<?> currentList() {
-        return tab == Tab.BOOKMARKS ? bookmarkList : contentsList;
+    private int indexOf(Tab which) {
+        for (int i = 0; i < views.size(); i++) {
+            if (views.get(i).tab() == which) return i;
+        }
+        return 0;
+    }
+
+    /** Focuses the current tab's target; lists get a selected row so that keys act on it. */
+    private void focusCurrent() {
+        Node target = views.get(indexOf(tab)).focusTarget();
+        if (target instanceof ListView<?> list) {
+            if (list.getSelectionModel().isEmpty() && !list.getItems().isEmpty()) {
+                list.getSelectionModel().selectFirst();
+            }
+        } else if (target instanceof TextInputControl field) {
+            field.selectAll();
+        }
+        target.requestFocus();
     }
 
     private void applyTab() {
-        boolean bookmarks = tab == Tab.BOOKMARKS;
-        contentsList.setVisible(!bookmarks);
-        contentsList.setManaged(!bookmarks);
-        bookmarkList.setVisible(bookmarks);
-        bookmarkList.setManaged(bookmarks);
+        for (TabView v : views) {
+            boolean shown = v.tab() == tab;
+            v.view().setVisible(shown);
+            v.view().setManaged(shown);
+        }
     }
 }
