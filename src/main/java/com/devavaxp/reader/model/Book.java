@@ -2,11 +2,14 @@ package com.devavaxp.reader.model;
 
 import com.google.gson.annotations.SerializedName;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 
 /**
- * A single volume (one .epub file) that belongs to a {@link BookCollection}.
+ * A single volume (one .epub or .pdf file) that belongs to a {@link BookCollection}.
  * <p>
  * The reading position is stored as {@code "chapter:fraction"}, where {@code chapter} is
  * the index inside the EPUB spine and {@code fraction} (0..1) is the relative position
@@ -19,7 +22,7 @@ public class Book {
 
     /** Reflowable e-book read with the pagination engine. */
     public static final String FORMAT_EPUB = "epub";
-    /** Fixed-page document (comics/manga). Only recorded for now; a PDF reader is not implemented yet. */
+    /** Fixed-page document (comics/manga) read with the page-image reader. */
     public static final String FORMAT_PDF = "pdf";
 
     @SerializedName("id")
@@ -54,6 +57,10 @@ public class Book {
     @SerializedName("format")
     private String format;
 
+    /** Bookmarks in reading order; missing in files written before bookmarks existed. */
+    @SerializedName("bookmarks")
+    private List<Bookmark> bookmarks;
+
     public Book(String collectionId, String title, String filePath, int order) {
         this.id = UUID.randomUUID().toString();
         this.collectionId = collectionId;
@@ -65,6 +72,7 @@ public class Book {
         this.savedPosition = "";
         this.lastReadAt = 0L;
         this.format = formatOf(filePath);
+        this.bookmarks = new ArrayList<>();
     }
 
     /** Format implied by a file name: {@code .pdf} is PDF, anything else is treated as EPUB. */
@@ -116,6 +124,44 @@ public class Book {
 
     public void setFormat(String format) {
         this.format = format;
+    }
+
+    // ------------------------------------------------------------------
+    // Bookmarks
+    // ------------------------------------------------------------------
+
+    /** Bookmarks sorted by position (read-only view). */
+    public List<Bookmark> getBookmarks() {
+        return Collections.unmodifiableList(bookmarkList());
+    }
+
+    /** Adds a bookmark and keeps the list in reading order. */
+    public void addBookmark(Bookmark bookmark) {
+        List<Bookmark> list = bookmarkList();
+        list.add(bookmark);
+        list.sort(Bookmark.BY_POSITION);
+    }
+
+    public boolean removeBookmark(Bookmark bookmark) {
+        return bookmarkList().remove(bookmark);
+    }
+
+    /**
+     * The bookmark that points at a given place, if any. Two positions are the same place
+     * when they are in the same chapter (page, for a PDF) and closer than {@code tolerance}
+     * in fraction — callers pass half the width of a page so that a bookmark set on a page
+     * is found again from anywhere on that page.
+     */
+    public Bookmark findBookmark(int chapter, double fraction, double tolerance) {
+        for (Bookmark b : bookmarkList()) {
+            if (b.getChapter() == chapter && Math.abs(b.getFraction() - fraction) <= tolerance) return b;
+        }
+        return null;
+    }
+
+    private List<Bookmark> bookmarkList() {
+        if (bookmarks == null) bookmarks = new ArrayList<>(); // file written before bookmarks existed
+        return bookmarks;
     }
 
     // ------------------------------------------------------------------

@@ -8,6 +8,7 @@ import com.devavaxp.reader.epub.EpubExtractor;
 import com.devavaxp.reader.epub.EpubParser;
 import com.devavaxp.reader.model.Book;
 import com.devavaxp.reader.model.BookCollection;
+import com.devavaxp.reader.model.Bookmark;
 import com.devavaxp.reader.model.Preferences;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -102,10 +103,13 @@ public class ReaderController implements Navigator.Screen, JsBridge.Listener {
     // good match (Windows, macOS, then common Linux fonts, then the generic family).
     private static final String FONT_SERIF = "Georgia, \"Times New Roman\", \"Noto Serif\", \"Liberation Serif\", \"DejaVu Serif\", serif";
     private static final String FONT_SANS = "\"Segoe UI\", \"Helvetica Neue\", Arial, \"Noto Sans\", \"Liberation Sans\", \"DejaVu Sans\", sans-serif";
-    private static final String HINT = "← →  page  ·  T contents  ·  Aa settings  ·  F11 full screen";
+    private static final String HINT = "← →  page  ·  B bookmark  ·  T contents  ·  Aa settings  ·  F11 full screen";
+    private static final String END_HINT = "End of book  ·  marked as read";
+    private static final int EXCERPT_LENGTH = 140;
 
     @FXML private BorderPane root;
     @FXML private Button historyBackButton;
+    @FXML private Button bookmarkButton;
     @FXML private Button tocButton;
     @FXML private Button settingsButton;
     @FXML private Button fullScreenButton;
@@ -116,7 +120,9 @@ public class ReaderController implements Navigator.Screen, JsBridge.Listener {
     @FXML private Label progressLabel;
     @FXML private Label loadingLabel;
     @FXML private VBox tocPanel;
+    @FXML private HBox panelTabs;
     @FXML private ListView<TocEntry> tocList;
+    @FXML private ListView<Bookmark> bookmarkList;
     @FXML private StackPane viewerContainer;
     @FXML private WebView webView;
     @FXML private ProgressBar progressBar;
@@ -146,8 +152,11 @@ public class ReaderController implements Navigator.Screen, JsBridge.Listener {
 
     private EventHandler<KeyEvent> keyFilter;
     private PauseTransition pendingSave;
+    private PauseTransition hintReset;
     private Popup settingsPopup;
     private Label fontSizeValue;
+    private ReaderSidePanel sidePanel;
+    private BookmarksPane bookmarks;
     private boolean wasMaximized;
     private double wheelAccumulated = 0;
     private long lastWheelFlip = 0;
@@ -179,6 +188,13 @@ public class ReaderController implements Navigator.Screen, JsBridge.Listener {
         setupWebEngine();
         setupInput();
         setupToc();
+        sidePanel = new ReaderSidePanel(tocPanel, panelTabs, tocList, bookmarkList, () -> webView.requestFocus());
+        bookmarks = new BookmarksPane(book, bookmarkList, new BookmarksPane.Host() {
+            @Override public String describe(Bookmark b) { return describeBookmark(b); }
+            @Override public void goTo(Bookmark b) { goToBookmark(b); }
+            @Override public void changed() { updateBookmarkButton(); scheduleSave(); }
+            @Override public Stage window() { return navigator.getStage(); }
+        });
 
         Stage stage = navigator.getStage();
         wasMaximized = stage.isMaximized();
@@ -223,7 +239,7 @@ public class ReaderController implements Navigator.Screen, JsBridge.Listener {
             return;
         }
         tocList.getItems().setAll(epub.getToc());
-        tocButton.setDisable(epub.getToc().isEmpty());
+        sidePanel.setContentsAvailable(!epub.getToc().isEmpty());
 
         int start = Math.min(book.getSavedChapter(), epub.chapterCount() - 1);
         double fraction = book.getSavedFraction();
@@ -445,7 +461,7 @@ public class ReaderController implements Navigator.Screen, JsBridge.Listener {
         }
         if (endOfBookShown) return;
         endOfBookShown = true;
-        hintLabel.setText("End of book  ·  marked as read");
+        hintLabel.setText(END_HINT);
     }
 
     private void pushHistory() {
@@ -568,6 +584,7 @@ public class ReaderController implements Navigator.Screen, JsBridge.Listener {
             hintLabel.setText(HINT);
         }
         highlightCurrentChapterInToc();
+        updateBookmarkButton();
 
         book.setPosition(chapter, fractionToSave);
         book.setReadingPercentage(progress * 100.0);
@@ -623,8 +640,11 @@ public class ReaderController implements Navigator.Screen, JsBridge.Listener {
             if (ev.getCode() == KeyCode.ESCAPE || ev.getCode() == KeyCode.T) {
                 showToc(false);
                 ev.consume();
+            } else if (ev.getCode() == KeyCode.TAB) {
+                sidePanel.switchToOther(); // Contents <-> Bookmarks
+                ev.consume();
             }
-            return; // arrows and Enter are handled by the contents list itself
+            return; // arrows, Enter, N and Delete are handled by the lists themselves
         }
         boolean ctrl = ev.isControlDown() || ev.isShortcutDown();
         switch (ev.getCode()) {
@@ -652,6 +672,7 @@ public class ReaderController implements Navigator.Screen, JsBridge.Listener {
             }
             case F11 -> { toggleFullScreen(); ev.consume(); }
             case T -> { if (!ctrl) { toggleToc(); ev.consume(); } }
+            case B -> { if (!ctrl) { toggleBookmark(); ev.consume(); } }
             case PLUS, ADD, EQUALS -> { if (ctrl) { changeFontSize(1); ev.consume(); } }
             case MINUS, SUBTRACT -> { if (ctrl) { changeFontSize(-1); ev.consume(); } }
             case DIGIT1, NUMPAD1 -> { if (!ctrl) { changeColumns(1); ev.consume(); } }
@@ -720,24 +741,93 @@ public class ReaderController implements Navigator.Screen, JsBridge.Listener {
     }
 
     private void toggleToc() {
-        showToc(!tocPanel.isVisible());
+        showToc(!sidePanel.isVisible());
     }
 
+    /** Opens the side panel on the contents (or on the bookmarks when there are none). */
     private void showToc(boolean show) {
-        if (show && tocList.getItems().isEmpty()) return;
-        tocPanel.setVisible(show);
-        tocPanel.setManaged(show);
-        if (show) {
+        if (!show) {
+            sidePanel.hide();
+            return;
+        }
+        sidePanel.show(ReaderSidePanel.Tab.CONTENTS);
+        if (sidePanel.tab() == ReaderSidePanel.Tab.CONTENTS) {
             tocList.refresh();
             int current = epub.tocEntryForChapter(chapter);
             if (current >= 0) {
                 tocList.getSelectionModel().select(current);
                 tocList.scrollTo(Math.max(0, current - 3));
             }
-            tocList.requestFocus();
-        } else {
-            webView.requestFocus();
         }
+    }
+
+    // ------------------------------------------------------------------
+    // Bookmarks
+    // ------------------------------------------------------------------
+
+    /** Adds a bookmark on the current page, or removes the one that is already there. */
+    private void toggleBookmark() {
+        if (!engineReady()) return;
+        ViewState s = readState();
+        double fraction = s.total() > 1 ? (double) s.view() / (s.total() - 1) : 0.0;
+        Bookmark existing = book.findBookmark(chapter, fraction, pageTolerance(s));
+        if (existing != null) {
+            book.removeBookmark(existing);
+            flashHint("Bookmark removed");
+        } else {
+            Object excerpt = reader("excerpt", EXCERPT_LENGTH);
+            book.addBookmark(new Bookmark(chapter, fraction, excerpt instanceof String text ? text : ""));
+            flashHint("Bookmark added  ·  T shows your bookmarks");
+        }
+        bookmarks.refresh();
+        updateBookmarkButton();
+        scheduleSave();
+    }
+
+    /** Half a page, in fraction units: a bookmark set anywhere on the current page matches. */
+    private static double pageTolerance(ViewState s) {
+        return s.total() > 1 ? 0.5 / (s.total() - 1) : 1.0;
+    }
+
+    private void updateBookmarkButton() {
+        if (!engineReady()) return;
+        ViewState s = readState();
+        double fraction = s.total() > 1 ? (double) s.view() / (s.total() - 1) : 0.0;
+        boolean marked = book.findBookmark(chapter, fraction, pageTolerance(s)) != null;
+        bookmarkButton.setText(marked ? "★" : "☆");
+    }
+
+    private String describeBookmark(Bookmark b) {
+        String title = epub.chapterTitle(b.getChapter(), "");
+        return title.isEmpty() ? "Chapter " + (b.getChapter() + 1) : title;
+    }
+
+    private void goToBookmark(Bookmark b) {
+        if (!engineReady()) return;
+        pushHistory();
+        showToc(false);
+        if (b.getChapter() == chapter) {
+            reader("goToFraction", b.getFraction());
+            updateState();
+        } else {
+            targetFraction = b.getFraction();
+            loadChapter(b.getChapter(), Target.FRACTION);
+        }
+    }
+
+    /** Shows a short confirmation in the footer, then restores the usual hint. */
+    private void flashHint(String text) {
+        hintLabel.setText(text);
+        if (hintReset == null) {
+            hintReset = new PauseTransition(Duration.seconds(2.2));
+            hintReset.setOnFinished(e -> hintLabel.setText(endOfBookShown ? END_HINT : HINT));
+        }
+        hintReset.playFromStart();
+    }
+
+    @FXML
+    private void onToggleBookmark() {
+        toggleBookmark();
     }
 
     // ------------------------------------------------------------------

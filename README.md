@@ -86,6 +86,8 @@ checksums.
   spreads with the cover alone and wide pages shown on their own, left-to-right or
   right-to-left reading direction, fit to the whole page or to the width (with scrolling), the
   PDF outline as a table of contents, and progress by page.
+- **Bookmarks with notes** in both readers: press `B` on any page, find it again in the
+  side panel (`T`, *Bookmarks* tab) with the first words of the page and your note.
 - **Light / sepia / dark themes** shared by both readers.
 - **"Continue reading"** card on the main screen.
 - Drag & drop `.epub` / `.pdf` files onto a collection; natural sort on import (Volume 2 before
@@ -104,7 +106,8 @@ On macOS, `Ctrl` in the tables below means `⌘`.
 | `←` `Shift+Space` `PgUp` `↑` | Previous page (mouse wheel, clicking the left edge) |
 | `Ctrl+→` / `Ctrl+←` | Next / previous chapter |
 | `Home` / `End` | Start / end of the chapter (`Ctrl` = of the book) |
-| `T` | Table of contents |
+| `B` | Bookmark this page (again: remove the bookmark) |
+| `T` | Side panel: table of contents and bookmarks (`Tab` switches between them) |
 | `Backspace` / `Alt+←` | Go back to where you were before following a link |
 | `Ctrl` `+` / `Ctrl` `-` | Font size |
 | `1` / `2` | One or two columns |
@@ -113,6 +116,11 @@ On macOS, `Ctrl` in the tables below means `⌘`.
 
 The **Aa** button opens the settings popup: font size, typeface, theme and columns.
 They are saved with the library.
+
+In the *Bookmarks* tab of the side panel, `Enter` or a click jumps to the bookmark, `N` (or
+`F2`) edits its one-line note and `Delete` removes it; the same works in the PDF reader. A
+bookmark remembers the chapter and the exact page position, plus the first words of the page
+so it can be recognised without opening the book. Bookmarks are saved with the library.
 
 ### PDF / manga reader
 
@@ -126,7 +134,8 @@ They are saved with the library.
 | `1` / `2` | Single page / double page (the cover and wide pages always stand alone) |
 | `R` | Toggle reading direction (left-to-right / right-to-left, for manga) |
 | `W` | Toggle fit: whole page / width |
-| `T` | Table of contents (the PDF outline, when the file has one) |
+| `B` | Bookmark this page (again: remove the bookmark) |
+| `T` | Side panel: the PDF outline (when the file has one) and bookmarks (`Tab` switches) |
 | `F11` | Full screen |
 | `Esc` | Close contents / leave full screen / back to the collection |
 
@@ -390,7 +399,9 @@ com.devavaxp.reader
 ├── VolumesController           volumes of a collection: import (.epub/.pdf), order, mark, read
 ├── ReaderController            EPUB reader: chapters, keyboard/mouse, contents, settings, progress
 ├── PdfReaderController         fixed-page reader: spreads, direction, fit, background rendering
-├── UiControls                  small controls built in code (segmented button rows)
+├── ReaderSidePanel             Contents | Bookmarks switch of the readers' side panel
+├── BookmarksPane               bookmark list shared by both readers: jump, note, remove
+├── UiControls                  small controls built in code (segmented rows, vector icons)
 ├── Dialogs                     dialogs styled like the app
 ├── bridge/JsBridge             object exposed to reader.js (link clicks, events)
 ├── data/DataManager            JSON persistence (Gson), atomic and fault-tolerant, legacy import,
@@ -404,7 +415,7 @@ com.devavaxp.reader
 │                               rendering, outline) — the seam for other formats, e.g. CBZ
 ├── pdf/PdfPageSource           PageSource backed by Apache PDFBox
 ├── pdf/PageSpreads             grouping of pages into single / double-page spreads
-└── model/                      BookCollection, Book, Preferences
+└── model/                      BookCollection, Book, Bookmark, Preferences
 resources/com/devavaxp/reader
 ├── *.fxml, styles.css          views and stylesheet
 └── reader.js                   pagination engine (injected into every EPUB chapter)

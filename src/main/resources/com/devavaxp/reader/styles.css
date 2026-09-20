@@ -606,6 +606,58 @@
     -fx-font-weight: bold;
 }
 
+/* Contents | Bookmarks switch at the top of the side panel, in the reader's colours */
+.reader-toc .segmented .toggle-button {
+    -fx-background-color: -reader-bar;
+    -fx-border-color: -reader-border;
+    -fx-text-fill: -reader-text;
+    -fx-font-size: 12px;
+    -fx-padding: 5 10;
+}
+
+.reader-toc .segmented .toggle-button:hover {
+    -fx-background-color: -reader-hover;
+}
+
+.reader-toc .segmented .toggle-button:selected {
+    -fx-background-color: -reader-accent;
+    -fx-border-color: -reader-accent;
+    -fx-text-fill: white;
+}
+
+.reader-toc .segmented .toggle-button:disabled {
+    -fx-opacity: 0.45;
+}
+
+/* Bookmark entries: where, first words of the passage, note */
+.bookmark-list .list-cell {
+    -fx-padding: 7 8;
+}
+
+.bookmark-where {
+    -fx-font-size: 12.5px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -reader-text;
+}
+
+.bookmark-excerpt {
+    -fx-font-size: 12px;
+    -fx-text-fill: -reader-muted;
+}
+
+.bookmark-note {
+    -fx-font-size: 12px;
+    -fx-font-style: italic;
+    -fx-text-fill: -reader-accent;
+}
+
+.bookmark-placeholder {
+    -fx-font-size: 12.5px;
+    -fx-text-fill: -reader-muted;
+    -fx-text-alignment: center;
+    -fx-padding: 12;
+}
+
 /* Segmented control (rows of mutually exclusive buttons) and reader settings popup */
 
 .settings {

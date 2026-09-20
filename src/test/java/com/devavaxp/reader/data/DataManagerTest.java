@@ -2,6 +2,7 @@ package com.devavaxp.reader.data;
 
 import com.devavaxp.reader.model.Book;
 import com.devavaxp.reader.model.BookCollection;
+import com.devavaxp.reader.model.Bookmark;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -273,5 +274,39 @@ class DataManagerTest {
 
     private static List<String> titles(DataManager dm, BookCollection c) {
         return dm.getBooksOf(c.getId()).stream().map(Book::getTitle).toList();
+    }
+
+    @Test
+    void bookmarksArePersistedAndOlderFilesLoadWithoutThem() throws IOException {
+        DataManager dm = new DataManager(file());
+        BookCollection c = new BookCollection("Novels");
+        dm.addCollection(c);
+        Book book = new Book(c.getId(), "Vol 1", "C:/x/1.epub", 1);
+        dm.addBook(book);
+        Bookmark first = new Bookmark(2, 0.25, "The ferry left before the mist had lifted");
+        first.setNote("start of the journey");
+        book.addBookmark(new Bookmark(7, 0.0, "later"));
+        book.addBookmark(first);
+        dm.save();
+
+        Book reloaded = new DataManager(file()).getBooksOf(c.getId()).get(0);
+        assertEquals(2, reloaded.getBookmarks().size());
+        Bookmark b = reloaded.getBookmarks().get(0);
+        assertEquals(2, b.getChapter());
+        assertEquals(0.25, b.getFraction(), 1e-9);
+        assertEquals("The ferry left before the mist had lifted", b.getExcerpt());
+        assertEquals("start of the journey", b.getNote());
+        assertEquals(first.getId(), b.getId());
+        assertEquals(7, reloaded.getBookmarks().get(1).getChapter());
+
+        // A file written before bookmarks existed has no "bookmarks" field at all.
+        Files.writeString(file(), """
+                { "collections": [ { "id": "c1", "title": "Old" } ],
+                  "books": [ { "id": "b1", "collectionId": "c1", "title": "Vol", "filePath": "C:/x/v.epub", "order": 1 } ] }
+                """, StandardCharsets.UTF_8);
+        Book old = new DataManager(file()).getBooksOf("c1").get(0);
+        assertTrue(old.getBookmarks().isEmpty());
+        old.addBookmark(new Bookmark(0, 0.0, ""));
+        assertEquals(1, old.getBookmarks().size(), "bookmarks can be added to books from older files");
     }
 }
