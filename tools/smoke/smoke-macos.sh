@@ -42,7 +42,7 @@ if ! se -e 'set frontmost to true' >/dev/null 2>&1; then
 fi
 
 # The whole flow is driven with the keyboard, so it does not depend on window size or position
-# (see smoke-linux.sh). Key codes: Return 36, Down 125, Escape 53, Right 124, Left 123, t 17.
+# (see smoke-linux.sh). Key codes: Return 36, Down 125, Escape 53, Right 124, Left 123, t 17, b 11, Tab 48.
 shot 01-library
 if $automation; then
     key 36                          # open "The Lantern Road"
@@ -51,9 +51,10 @@ if $automation; then
     shot 03-reader-epub
     key 124; key 124
     shot 04-reader-epub-next-pages
-    key 17                          # contents panel
-    shot 05-reader-epub-contents
-    key 53; WAIT=2 key 53           # close contents, back to the collection
+    key 11                          # B: bookmark this page
+    key 17; key 48                  # T then Tab: side panel on the bookmarks tab
+    shot 05-reader-epub-bookmarks
+    key 53; WAIT=2 key 53           # close the panel, back to the collection
     key 53                          # back to the library
     key 125; key 36                 # "Sample Manga"
     shot 06-collection-manga
@@ -86,5 +87,6 @@ if grep -i "exception" "$out/app.log" | grep -qv '^Exception in thread "InvokeLa
 fi
 if $automation; then
     grep -q '"savedPosition": "1[2-9]:' "$library" || { echo "Reading progress was not saved:"; grep -n savedPosition "$library"; exit 1; }
+    grep -q '"excerpt": "[A-Za-z]' "$library" || { echo "The bookmark was not saved:"; grep -n -e excerpt -e bookmarks "$library"; exit 1; }
 fi
 echo "Smoke test passed (automation: $automation)"

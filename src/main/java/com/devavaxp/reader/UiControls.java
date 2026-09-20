@@ -75,6 +75,15 @@ final class UiControls {
         }
     }
 
+    /** Enables or disables one option of a row built by {@link #segmented}. */
+    static void setEnabled(HBox segmentedRow, String value, boolean enabled) {
+        for (var node : segmentedRow.getChildren()) {
+            if (node instanceof ToggleButton button && value.equalsIgnoreCase(String.valueOf(button.getUserData()))) {
+                button.setDisable(!enabled);
+            }
+        }
+    }
+
     /** Value of the selected option in a row built by {@link #segmented}, or null. */
     static String selected(HBox segmentedRow) {
         for (var node : segmentedRow.getChildren()) {

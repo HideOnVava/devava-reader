@@ -38,9 +38,14 @@
                 <Label fx:id="titleLabel" styleClass="reader-title"/>
                 <Label fx:id="chapterLabel" styleClass="reader-subtitle"/>
             </VBox>
+            <Button fx:id="bookmarkButton" text="☆" styleClass="icon, flat" onAction="#onToggleBookmark" focusTraversable="false">
+                <tooltip>
+                    <Tooltip text="Bookmark this page (B)"/>
+                </tooltip>
+            </Button>
             <Button fx:id="tocButton" text="☰" styleClass="icon, flat" onAction="#onToggleToc" focusTraversable="false">
                 <tooltip>
-                    <Tooltip text="Table of contents (T)"/>
+                    <Tooltip text="Contents and bookmarks (T)"/>
                 </tooltip>
             </Button>
             <Button fx:id="settingsButton" text="Aa" styleClass="icon, flat" onAction="#onSettings" focusTraversable="false">
@@ -64,8 +69,11 @@
             <padding>
                 <Insets top="14" right="8" bottom="10" left="12"/>
             </padding>
-            <Label text="Contents" styleClass="reader-toc-title"/>
+            <!-- Contents | Bookmarks switch, filled in by the controller (UiControls.segmented) -->
+            <HBox fx:id="panelTabs"/>
             <ListView fx:id="tocList" VBox.vgrow="ALWAYS" styleClass="toc-list"/>
+            <ListView fx:id="bookmarkList" VBox.vgrow="ALWAYS" styleClass="toc-list, bookmark-list"
+                      managed="false" visible="false"/>
         </VBox>
     </left>
 

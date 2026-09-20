@@ -89,9 +89,10 @@ Key "{DOWN}"; Key "{ENTER}" 8       # Vol. 2 -> EPUB reader
 Shot "03-reader-epub"
 Key "{RIGHT}"; Key "{RIGHT}"
 Shot "04-reader-epub-next-pages"
-Key "t"                             # contents panel
-Shot "05-reader-epub-contents"
-Key "{ESC}"; Key "{ESC}" 2          # close contents, back to the collection
+Key "b"                             # bookmark this page
+Key "t"; Key "{TAB}"                # side panel: contents, then the bookmarks tab
+Shot "05-reader-epub-bookmarks"
+Key "{ESC}"; Key "{ESC}" 2          # close the panel, back to the collection
 Key "{ESC}"                         # back to the library
 Key "{DOWN}"; Key "{ENTER}"         # "Sample Manga"
 Shot "06-collection-manga"
@@ -110,5 +111,8 @@ $log = (Get-Content "$Out\app.log" -Raw -ErrorAction SilentlyContinue) + (Get-Co
 if ($log -match "(?i)exception") { Write-Host $log; throw "The log contains an exception" }
 if (-not ((Get-Content $library -Raw) -match '"savedPosition": "1[2-9]:')) {
     Get-Content $library | Select-String savedPosition; throw "Reading progress was not saved"
+}
+if (-not ((Get-Content $library -Raw) -match '"excerpt": "[A-Za-z]')) {
+    Get-Content $library | Select-String "excerpt|bookmarks"; throw "The bookmark was not saved"
 }
 Write-Host "Smoke test passed"

@@ -62,12 +62,17 @@ public final class Dialogs {
 
     /** Asks for a non-empty text. Returns empty when cancelled or left blank. */
     public static Optional<String> askText(Window owner, String title, String label, String initialValue) {
+        return editText(owner, title, label, initialValue).filter(s -> !s.isEmpty());
+    }
+
+    /** Asks for a text that may be left blank (to clear a value). Returns empty only when cancelled. */
+    public static Optional<String> editText(Window owner, String title, String label, String initialValue) {
         TextInputDialog dialog = new TextInputDialog(initialValue == null ? "" : initialValue);
         dialog.setTitle(title);
         dialog.setHeaderText(title);
         dialog.setContentText(label);
         style(dialog, owner);
         dialog.getEditor().setPrefColumnCount(28);
-        return dialog.showAndWait().map(String::trim).filter(s -> !s.isEmpty());
+        return dialog.showAndWait().map(String::trim);
     }
 }

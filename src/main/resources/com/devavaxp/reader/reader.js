@@ -499,6 +499,58 @@
     remeasure: function () {
       relayout(true);
       return stateJson();
+    },
+    /**
+     * First words of the text shown in the current view (for bookmarks), at most maxChars.
+     * Headings at the very start are skipped (the bookmark list already says the chapter)
+     * and the text starts at a word boundary.
+     */
+    excerpt: function (maxChars) {
+      var limit = Math.max(20, Number(maxChars) || 120);
+      var b = document.body;
+      var anchor = currentAnchor();
+      if (!b || !anchor || !anchor.node) return '';
+      var start = anchor.node;
+      var offset = anchor.offset || 0;
+      if (start.nodeType !== 3) {
+        var inner = document.createTreeWalker(start, NodeFilter.SHOW_TEXT, null, false);
+        start = inner.nextNode();
+        offset = 0;
+        if (!start) return '';
+      }
+      function insideTag(node, re) {
+        for (var p = node.parentNode; p && p !== b; p = p.parentNode) {
+          if (p.nodeType === 1 && re.test(p.tagName || '')) return true;
+        }
+        return false;
+      }
+      var collect = function (skipHeadings) {
+        var walker = document.createTreeWalker(b, NodeFilter.SHOW_TEXT, null, false);
+        walker.currentNode = start;
+        var text = '';
+        var n = start;
+        var first = true;
+        while (n && text.replace(/\s+/g, ' ').length < limit + 20) {
+          if (!insideTag(n, /^(script|style)$/i) && !(skipHeadings && !text.trim() && insideTag(n, /^h[1-6]$/i))) {
+            var v = n.nodeValue || '';
+            if (first && offset > 0) {
+              v = v.substring(offset);
+              // Mid-word anchor (the caret sits at a line break): start at the next word.
+              if (/\S/.test(n.nodeValue.charAt(offset - 1))) v = v.replace(/^\S*\s*/, '');
+            }
+            text += ' ' + v;
+          }
+          first = false;
+          n = walker.nextNode();
+        }
+        return text.replace(/\s+/g, ' ').trim();
+      };
+      var text = collect(true);
+      if (!text) text = collect(false);
+      if (text.length > limit) {
+        text = text.substring(0, limit).replace(/\s+\S*$/, '') + '…';
+      }
+      return text;
     }
   };
 

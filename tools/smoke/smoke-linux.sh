@@ -61,9 +61,10 @@ key Down; WAIT=8 key Return     # Vol. 2 -> EPUB reader
 shot 03-reader-epub
 key Right; key Right
 shot 04-reader-epub-next-pages
-key t                           # contents panel
-shot 05-reader-epub-contents
-key Escape; WAIT=2 key Escape   # close contents, back to the collection
+key b                           # bookmark this page
+key t; key Tab                  # side panel: contents, then the bookmarks tab
+shot 05-reader-epub-bookmarks
+key Escape; WAIT=2 key Escape   # close the panel, back to the collection
 key Escape                      # back to the library
 key Down; key Return            # "Sample Manga"
 shot 06-collection-manga
@@ -96,4 +97,7 @@ fi
 # The manga volume was opened and turned: its progress must have been saved.
 grep -q '"savedPosition": "1[2-9]:' "$library" \
     || { echo "Reading progress was not saved:"; grep -n "savedPosition" "$library"; exit 1; }
+# The bookmark set in the EPUB reader must have been saved with the first words of its page.
+grep -q '"excerpt": "[A-Za-z]' "$library" \
+    || { echo "The bookmark was not saved:"; grep -n -e excerpt -e bookmarks "$library"; exit 1; }
 echo "Smoke test passed"

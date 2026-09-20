@@ -3,6 +3,7 @@ package com.devavaxp.reader;
 import com.devavaxp.reader.data.DataManager;
 import com.devavaxp.reader.model.Book;
 import com.devavaxp.reader.model.BookCollection;
+import com.devavaxp.reader.model.Bookmark;
 import com.devavaxp.reader.model.Preferences;
 import com.devavaxp.reader.pdf.PageSource;
 import com.devavaxp.reader.pdf.PageSource.OutlineEntry;
@@ -62,7 +63,8 @@ import java.util.concurrent.Executors;
  */
 public class PdfReaderController implements Navigator.Screen {
 
-    private static final String HINT = "← →  page  ·  T contents  ·  ⚙ settings  ·  F11 full screen";
+    private static final String HINT = "← →  page  ·  B bookmark  ·  T contents  ·  ⚙ settings  ·  F11 full screen";
+    private static final String END_HINT = "End of book  ·  marked as read";
     private static final double PADDING = 12;
     private static final double GAP = 6;
     private static final int WIDTH_BUCKET = 64;          // render widths are rounded up to this
@@ -70,6 +72,7 @@ public class PdfReaderController implements Navigator.Screen {
     private static final int CACHE_SIZE = 8;
 
     @FXML private BorderPane root;
+    @FXML private Button bookmarkButton;
     @FXML private Button tocButton;
     @FXML private Button settingsButton;
     @FXML private Button fullScreenButton;
@@ -80,7 +83,9 @@ public class PdfReaderController implements Navigator.Screen {
     @FXML private Label progressLabel;
     @FXML private Label loadingLabel;
     @FXML private VBox tocPanel;
+    @FXML private HBox panelTabs;
     @FXML private ListView<OutlineEntry> tocList;
+    @FXML private ListView<Bookmark> bookmarkList;
     @FXML private StackPane viewerContainer;
     @FXML private ScrollPane scroller;
     @FXML private HBox spreadBox;
@@ -111,7 +116,10 @@ public class PdfReaderController implements Navigator.Screen {
     private boolean endOfBookShown = false;
     private EventHandler<KeyEvent> keyFilter;
     private PauseTransition pendingSave;
+    private PauseTransition hintReset;
     private Popup settingsPopup;
+    private ReaderSidePanel sidePanel;
+    private BookmarksPane bookmarks;
     private boolean wasMaximized;
     private double wheelAccumulated = 0;
     private long lastWheelFlip = 0;
@@ -143,6 +151,13 @@ public class PdfReaderController implements Navigator.Screen {
         applyUiTheme();
         setupInput();
         setupToc();
+        sidePanel = new ReaderSidePanel(tocPanel, panelTabs, tocList, bookmarkList, () -> scroller.requestFocus());
+        bookmarks = new BookmarksPane(book, bookmarkList, new BookmarksPane.Host() {
+            @Override public String describe(Bookmark b) { return describeBookmark(b); }
+            @Override public void goTo(Bookmark b) { goToBookmark(b); }
+            @Override public void changed() { updateBookmarkButton(); scheduleSave(); }
+            @Override public Stage window() { return navigator.getStage(); }
+        });
 
         Stage stage = navigator.getStage();
         wasMaximized = stage.isMaximized();
@@ -178,7 +193,7 @@ public class PdfReaderController implements Navigator.Screen {
         ready = true;
         loadingLabel.setVisible(false);
         tocList.getItems().setAll(source.outline());
-        tocButton.setDisable(source.outline().isEmpty());
+        sidePanel.setContentsAvailable(!source.outline().isEmpty());
         rebuildSpreads();
 
         int startPage = Math.min(book.getSavedChapter(), source.pageCount() - 1);
@@ -447,7 +462,7 @@ public class PdfReaderController implements Navigator.Screen {
         }
         if (endOfBookShown) return;
         endOfBookShown = true;
-        hintLabel.setText("End of book  ·  marked as read");
+        hintLabel.setText(END_HINT);
     }
 
     // ------------------------------------------------------------------
@@ -467,6 +482,7 @@ public class PdfReaderController implements Navigator.Screen {
         chapterLabel.setText(chapterTitle(first));
         if (!endOfBookShown) hintLabel.setText(HINT);
         if (tocPanel.isVisible()) tocList.refresh();
+        updateBookmarkButton();
 
         book.setPosition(first, 0.0);
         book.setReadingPercentage(progress * 100.0);
@@ -556,8 +572,11 @@ public class PdfReaderController implements Navigator.Screen {
             if (ev.getCode() == KeyCode.ESCAPE || ev.getCode() == KeyCode.T) {
                 showToc(false);
                 ev.consume();
+            } else if (ev.getCode() == KeyCode.TAB) {
+                sidePanel.switchToOther(); // Contents <-> Bookmarks
+                ev.consume();
             }
-            return; // arrows and Enter are handled by the contents list itself
+            return; // arrows, Enter, N and Delete are handled by the lists themselves
         }
         boolean ctrl = ev.isControlDown() || ev.isShortcutDown();
         switch (ev.getCode()) {
@@ -576,6 +595,7 @@ public class PdfReaderController implements Navigator.Screen {
             }
             case F11 -> { toggleFullScreen(); ev.consume(); }
             case T -> { if (!ctrl) { toggleToc(); ev.consume(); } }
+            case B -> { if (!ctrl) { toggleBookmark(); ev.consume(); } }
             case R -> { if (!ctrl) { changeDirection(prefs.isPdfRightToLeft() ? Preferences.PDF_DIRECTION_LTR : Preferences.PDF_DIRECTION_RTL); ev.consume(); } }
             case W -> { if (!ctrl) { changeFit(prefs.isPdfFitWidth() ? Preferences.PDF_FIT_PAGE : Preferences.PDF_FIT_WIDTH); ev.consume(); } }
             case DIGIT1, NUMPAD1 -> { if (!ctrl) { changeLayout(Preferences.PDF_LAYOUT_SINGLE); ev.consume(); } }
@@ -639,24 +659,79 @@ public class PdfReaderController implements Navigator.Screen {
     }
 
     private void toggleToc() {
-        showToc(!tocPanel.isVisible());
+        showToc(!sidePanel.isVisible());
     }
 
+    /** Opens the side panel on the contents (or on the bookmarks when there is no outline). */
     private void showToc(boolean show) {
-        if (show && tocList.getItems().isEmpty()) return;
-        tocPanel.setVisible(show);
-        tocPanel.setManaged(show);
-        if (show) {
+        if (!show) {
+            sidePanel.hide();
+            return;
+        }
+        sidePanel.show(ReaderSidePanel.Tab.CONTENTS);
+        if (sidePanel.tab() == ReaderSidePanel.Tab.CONTENTS) {
             tocList.refresh();
             int current = ready ? outlineIndexForPage(PageSpreads.firstPage(spreads, spread)) : -1;
             if (current >= 0) {
                 tocList.getSelectionModel().select(current);
                 tocList.scrollTo(Math.max(0, current - 3));
             }
-            tocList.requestFocus();
-        } else {
-            scroller.requestFocus();
         }
+    }
+
+    // ------------------------------------------------------------------
+    // Bookmarks (one per page: the first page of the spread on screen)
+    // ------------------------------------------------------------------
+
+    private void toggleBookmark() {
+        if (!ready || spreads.isEmpty()) return;
+        int page = PageSpreads.firstPage(spreads, spread);
+        Bookmark existing = book.findBookmark(page, 0.0, 0.0);
+        if (existing != null) {
+            book.removeBookmark(existing);
+            flashHint("Bookmark removed");
+        } else {
+            book.addBookmark(new Bookmark(page, 0.0, ""));
+            flashHint("Bookmark added  ·  T shows your bookmarks");
+        }
+        bookmarks.refresh();
+        updateBookmarkButton();
+        scheduleSave();
+    }
+
+    private void updateBookmarkButton() {
+        if (!ready || spreads.isEmpty()) return;
+        boolean marked = false;
+        for (int page : spreads.get(spread)) {
+            if (book.findBookmark(page, 0.0, 0.0) != null) marked = true;
+        }
+        bookmarkButton.setText(marked ? "★" : "☆");
+    }
+
+    private String describeBookmark(Bookmark b) {
+        String where = "Page " + (b.getChapter() + 1);
+        String title = ready ? chapterTitle(b.getChapter()) : "";
+        return title.isEmpty() ? where : where + "  ·  " + title;
+    }
+
+    private void goToBookmark(Bookmark b) {
+        showToc(false);
+        goToPage(b.getChapter());
+    }
+
+    /** Shows a short confirmation in the footer, then restores the usual hint. */
+    private void flashHint(String text) {
+        hintLabel.setText(text);
+        if (hintReset == null) {
+            hintReset = new PauseTransition(Duration.seconds(2.2));
+            hintReset.setOnFinished(e -> hintLabel.setText(endOfBookShown ? END_HINT : HINT));
+        }
+        hintReset.playFromStart();
+    }
+
+    @FXML
+    private void onToggleBookmark() {
+        toggleBookmark();
     }
 
     // ------------------------------------------------------------------
