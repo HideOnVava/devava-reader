@@ -76,15 +76,11 @@ if $automation; then
     # macOS, JavaFX buttons ignore Return); Cmd+Shift+G asks the folder panel for a path, Return
     # goes there and Return again chooses it (if the panel is still open).
     key 48; key 48; key 48; WAIT=3 key 49
+    panel_open || { echo "The folder panel did not open"; shot 10-no-panel; exit 1; }
+    cmd_shift_key g; type_ "$(cd "$samples" && pwd)/Lantern Import"
     shot 10a-folder-panel
-    panel_open && echo "folder panel: open" || echo "folder panel: not detected"
-    cmd_shift_key g
-    shot 10b-go-to-folder
-    type_ "$(cd "$samples" && pwd)/Lantern Import"
-    shot 10c-path-typed
     WAIT=3 key 36
-    shot 10d-after-return
-    if panel_open; then echo "folder panel: still open"; WAIT=3 key 36; fi
+    if panel_open; then WAIT=3 key 36; fi
     shot 10-library-imported
 fi
 
