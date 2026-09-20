@@ -47,7 +47,7 @@ if ! se -e 'set frontmost to true' >/dev/null 2>&1; then
 fi
 
 # The whole flow is driven with the keyboard, so it does not depend on window size or position
-# (see smoke-linux.sh). Key codes: Return 36, Down 125, Escape 53, Right 124, Left 123, t 17, b 11, Tab 48.
+# (see smoke-linux.sh). Key codes: Return 36, Down 125, Escape 53, Right 124, Left 123, t 17, b 11, Tab 48, Space 49.
 shot 01-library
 if $automation; then
     key 36                          # open "The Lantern Road"
@@ -72,10 +72,10 @@ if $automation; then
     shot 09-reader-pdf-next-spread
     WAIT=4 key 53                   # leave the reader and let its background work finish
     key 53                          # back to the library
-    # Import a folder as a collection: Tab reaches "Import folder…" and Enter opens the system
-    # folder panel; Cmd+Shift+G asks for a path, Return goes there and Return again chooses it
-    # (if the panel is still open).
-    key 48; key 48; key 48; WAIT=3 key 36
+    # Import a folder as a collection: Tab reaches "Import folder…" and Space presses it (on
+    # macOS, JavaFX buttons ignore Return); Cmd+Shift+G asks the folder panel for a path, Return
+    # goes there and Return again chooses it (if the panel is still open).
+    key 48; key 48; key 48; WAIT=3 key 49
     shot 10a-folder-panel
     panel_open && echo "folder panel: open" || echo "folder panel: not detected"
     cmd_shift_key g
